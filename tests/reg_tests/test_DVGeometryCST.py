@@ -9,6 +9,7 @@ import os
 import unittest
 
 # External modules
+from baseclasses import BaseRegTest
 from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
@@ -23,11 +24,24 @@ try:
 except ImportError:
     prefoilImported = False
 
+baseDir = os.path.dirname(os.path.abspath(__file__))
+inputDir = os.path.join(baseDir, "..", "..", "input_files")
+
 # LEUpper is true if the leading edge (minimum x) point is considered to be on the upper surface
 airfoils = [
     {"fName": "naca2412.dat", "LEUpper": False},
     {"fName": "naca0012.dat", "LEUpper": True},
     {"fName": "e63.dat", "LEUpper": False},
+]
+
+airfoils_cst_reg = [
+    {"name": "naca2412"},
+    {"name": "naca0012"},
+    {"name": "naca0012_closed"},
+    {"name": "naca0012_clockwise"},
+    {"name": "naca0012_sharp"},
+    {"name": "naca0012_zeroLE"},
+    {"name": "e63"},
 ]
 
 # Parameterization of design variables
@@ -57,7 +71,6 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         self.x = np.linspace(0, 1, 100)
         self.yte = 1e-3
         self.CS_delta = 1e-200
-        self.curDir = os.path.abspath(os.path.dirname(__file__))
 
     def test_ClassShape(self):
         """Test that for w_i = 1, the class shape has the expected shape"""
@@ -126,37 +139,83 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
     def test_fitCST(self):
         """Test the CST parameter fitting"""
         # Read in airfoil coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = readCoordFile(os.path.join(inputDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        yTE = coords[0, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
         N1 = 0.5
         N2 = 1.0
+
+        # Normalize the x-coordinates
+        xMin = np.min(coords[:, 0])
+        xMax = np.max(coords[:, 0])
+        chord = xMax - xMin
+        xScaledUpper = (coords[idxUpper, 0] - xMin) / chord
+        xScaledLower = (coords[idxLower, 0] - xMin) / chord
 
         for nCST in range(2, 10):
             # Fit the CST parameters and then compute the coordinates
             # with those parameters and check that it's close
             upperCST = DVGeometryCST.computeCSTfromCoords(coords[idxUpper, 0], coords[idxUpper, 1], nCST, N1=N1, N2=N2)
             lowerCST = DVGeometryCST.computeCSTfromCoords(coords[idxLower, 0], coords[idxLower, 1], nCST, N1=N1, N2=N2)
-            fitCoordsUpper = DVGeometryCST.computeCSTCoordinates(coords[idxUpper, 0], N1, N2, upperCST, yTE)
-            fitCoordsLower = DVGeometryCST.computeCSTCoordinates(coords[idxLower, 0], N1, N2, lowerCST, -yTE)
+            fitCoordsUpper = (
+                DVGeometryCST.computeCSTCoordinates(xScaledUpper, N1, N2, upperCST, yUpperTE / chord) * chord
+            )
+            fitCoordsLower = (
+                DVGeometryCST.computeCSTCoordinates(xScaledLower, N1, N2, lowerCST, yLowerTE / chord) * chord
+            )
 
             # Loosen the tolerances for the challenging e63 airfoil
             if self.fName == "e63.dat":
                 if nCST < 4:
-                    atol = 1e-1
-                    rtol = 1.0
+                    atol = 5e-3
+                    rtol = 1e-1
                 else:
-                    atol = 1e-2
-                    rtol = 6e-1
+                    atol = 2e-3
+                    rtol = 1e-1
             else:
                 atol = 1e-3
                 rtol = 1e-1
 
             np.testing.assert_allclose(fitCoordsUpper, coords[idxUpper, 1], atol=atol, rtol=rtol)
             np.testing.assert_allclose(fitCoordsLower, coords[idxLower, 1], atol=atol, rtol=rtol)
+
+
+@parameterized_class(airfoils_cst_reg)
+class DVGeometryCSTFitRegTest(unittest.TestCase):
+    N_PROCS = 1
+
+    def train_cst_fit(self):
+        self.test_cst_fit(train=True)
+
+    def test_cst_fit(self, train=False):
+        datFile = os.path.join(inputDir, f"{self.name}.dat")
+        DVGeo = DVGeometryCST(datFile, numCST=8)
+
+        upperCST = DVGeo.defaultDV["upper"]
+        lowerCST = DVGeo.defaultDV["lower"]
+
+        if self.name in ["naca0012_closed", "naca0012_clockwise"]:
+            # The closed and clockwise versions of naca0012.dat should have the same CST coefficients
+            # as the original, so use the same ref file
+            refName = "naca0012"
+        else:
+            refName = self.name
+
+        refFile = os.path.join(baseDir, "ref", f"test_DVGeometryCST_{refName}.ref")
+        tol = 1e-12
+        with BaseRegTest(refFile, train=train) as handler:
+            # Regression test the upper surface CST coefficients
+            handler.root_add_val("upperCST", upperCST, tol=tol)
+            if "naca0012" in self.name:
+                # Test that the coefficients are symmetric for symmetric airfoils
+                np.testing.assert_allclose(upperCST, -lowerCST, rtol=tol)
+            else:
+                # Regression test the lower surface CST coefficients for asymmetric airfoils
+                handler.root_add_val("lowerCST", lowerCST, tol=tol)
 
 
 @unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
@@ -166,8 +225,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
     N_PROCS = 1
 
     def setUp(self):
-        self.curDir = os.path.abspath(os.path.dirname(__file__))
-        self.datFile = os.path.join(self.curDir, self.fName)
+        self.datFile = os.path.join(inputDir, self.fName)
         self.comm = MPI.COMM_WORLD
         self.DVGeo = DVGeometryCST(self.datFile, comm=self.comm)
 
@@ -180,7 +238,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - 1)
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         self.DVGeo.addPointSet(coords, "test")
 
@@ -189,7 +248,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
             self.assertIn(idx, self.DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -200,7 +260,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         # Randomize the index order (do indices so we can track where they end up)
         rng = np.random.default_rng(1)
@@ -223,7 +284,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         for idx in idxLowerRand:
             if idx != idxShuffle[-1]:
                 self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -241,7 +303,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - nPointsTE + 2 - 1)
-        thickTE = coords[0, 1] - coords[coords.shape[0] - nPointsTE + 1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[coords.shape[0] - nPointsTE + 1, 1]
 
         self.DVGeo.addPointSet(coords, "test")
 
@@ -250,7 +313,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
             self.assertIn(idx, self.DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -262,8 +326,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
     N_PROCS = 4
 
     def setUp(self):
-        self.curDir = os.path.abspath(os.path.dirname(__file__))
-        self.datFile = os.path.join(self.curDir, self.fName)
+        self.datFile = os.path.join(inputDir, self.fName)
         self.comm = MPI.COMM_WORLD
         self.DVGeo = DVGeometryCST(self.datFile, comm=self.comm)
 
@@ -278,7 +341,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         isUpper = isUpper == 1
         isLower = np.logical_not(isUpper)
 
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         # Divide up the points among the procs (mostly evenly, but not quite to check the harder case)
         if self.N_PROCS == 1:
@@ -304,7 +368,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         for idx in idxLower:
             if idx != coords.shape[0] - 1:
                 self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -319,7 +384,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         isUpper = isUpper == 1
         isLower = np.logical_not(isUpper)
 
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         # Randomize the index order (do indices so we can track where they end up)
         rng = np.random.default_rng(1)
@@ -379,7 +445,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         for idx in idxLower:
             if idx != idxEnd:
                 self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -390,8 +457,7 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
     N_PROCS = 1
 
     def test_addPointSet_sharp(self):
-        curDir = os.path.abspath(os.path.dirname(__file__))
-        datFile = os.path.join(curDir, "naca0012_sharp.dat")
+        datFile = os.path.join(inputDir, "naca0012_sharp.dat")
         comm = MPI.COMM_WORLD
         DVGeo = DVGeometryCST(datFile, comm=comm)
 
@@ -404,7 +470,8 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE)
         idxLower = np.arange(idxLE, coords.shape[0] - 1)
-        thickTE = 0.0
+        yUpperTE = 0.0
+        yLowerTE = 0.0
 
         DVGeo.addPointSet(coords, "test")
 
@@ -413,14 +480,14 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
             self.assertIn(idx, DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), DVGeo.points["test"]["xMax"])
         self.assertTrue(DVGeo.sharp)
 
     def test_addPointSet_closed(self):
-        curDir = os.path.abspath(os.path.dirname(__file__))
-        datFile = os.path.join(curDir, "naca0012_closed.dat")
+        datFile = os.path.join(inputDir, "naca0012_closed.dat")
         comm = MPI.COMM_WORLD
         DVGeo = DVGeometryCST(datFile, comm=comm)
 
@@ -433,7 +500,8 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE)
         idxLower = np.arange(idxLE, coords.shape[0] - 2)
-        thickTE = coords[0, 1] - coords[-2, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-2, 1]
 
         DVGeo.addPointSet(coords, "test")
 
@@ -442,7 +510,8 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
             self.assertIn(idx, DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), DVGeo.points["test"]["xMax"])
         self.assertFalse(DVGeo.sharp)
@@ -455,8 +524,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
     N_PROCS = 1
 
     def setUp(self):
-        self.curDir = os.path.abspath(os.path.dirname(__file__))
-        self.datFile = os.path.join(self.curDir, "naca2412.dat")
+        self.datFile = os.path.join(inputDir, "naca2412.dat")
         self.rng = np.random.default_rng(1)
         self.comm = MPI.COMM_WORLD
         if self.dvName in ["upper", "lower"]:
@@ -594,13 +662,12 @@ class TestFunctionality(unittest.TestCase):
     """
 
     def test_plotCST(self):
-        DVGeometryCST.plotCST(np.ones(4), np.ones(3))
+        DVGeometryCST.plotCST(np.ones(4), np.ones(3), 1e-3, 1e-3)
 
     def test_print(self):
-        curDir = os.path.abspath(os.path.dirname(__file__))
         nUpper = 5
         nLower = 3
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=[nUpper, nLower])
+        self.DVGeo = DVGeometryCST(os.path.join(inputDir, "naca2412.dat"), numCST=[nUpper, nLower])
 
         self.DVGeo.addDV("upper", dvType="upper")
         self.DVGeo.addDV("lower", dvType="lower")
@@ -610,11 +677,10 @@ class TestFunctionality(unittest.TestCase):
         self.DVGeo.printDesignVariables()
 
     def test_getNDV(self):
-        curDir = os.path.abspath(os.path.dirname(__file__))
         nUpper = 5
         nLower = 3
         nOther = 3  # N1, N2, and chord
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=[nUpper, nLower])
+        self.DVGeo = DVGeometryCST(os.path.join(inputDir, "naca2412.dat"), numCST=[nUpper, nLower])
 
         self.DVGeo.addDV("upper", dvType="upper")
         self.DVGeo.addDV("lower", dvType="lower")
@@ -625,10 +691,9 @@ class TestFunctionality(unittest.TestCase):
         self.assertEqual(nUpper + nLower + nOther, self.DVGeo.getNDV())
 
     def test_getValues(self):
-        curDir = os.path.abspath(os.path.dirname(__file__))
         nUpper = 5
         nLower = 3
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=[nUpper, nLower])
+        self.DVGeo = DVGeometryCST(os.path.join(inputDir, "naca2412.dat"), numCST=[nUpper, nLower])
 
         upper = np.full((nUpper,), 0.3)
         lower = 0.1 * np.ones(nLower)
@@ -657,8 +722,7 @@ class TestFunctionality(unittest.TestCase):
             np.testing.assert_array_equal(DVs[dvName], valDVs[dvName])
 
     def test_getVarNames(self):
-        curDir = os.path.abspath(os.path.dirname(__file__))
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
+        self.DVGeo = DVGeometryCST(os.path.join(inputDir, "naca2412.dat"))
 
         dvNames = ["amy", "joesph", "maryann", "tobysue", "sir blue bus"]
 
@@ -677,8 +741,7 @@ class TestFunctionality(unittest.TestCase):
 @unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 class TestErrorChecking(unittest.TestCase):
     def setUp(self):
-        curDir = os.path.abspath(os.path.dirname(__file__))
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=4)
+        self.DVGeo = DVGeometryCST(os.path.join(inputDir, "naca2412.dat"), numCST=4)
 
     def test_addPointSet_min_out_of_bounds(self):
         points = np.array(
