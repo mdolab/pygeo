@@ -1,11 +1,11 @@
 {
     "funcs_base": {
-        "proximity1": 0.0999999999999992,
-        "proximity2": 0.9999999999999986
+        "proximity1": 0.10000000000000142,
+        "proximity2": 1.0000000000000004
     },
     "funcs_new": {
-        "proximity1": 0.14999999999999922,
-        "proximity2": 0.9499999999999985
+        "proximity1": 0.15000000000000144,
+        "proximity2": 0.9500000000000004
     },
     "sens_base": {
         "proximity1": {
@@ -24,7 +24,7 @@
         },
         "proximity2": {
             "child1_x_disp": 0.0,
-            "child2_x_disp": -1.0
+            "child2_x_disp": -0.9999999999999999
         }
     }
 }

@@ -5,7 +5,7 @@ import openmdao.api as om
 from openmdao.api import AnalysisError
 
 # Local modules
-from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
+from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryMulti, DVGeometryVSP
 
 
 # class that actually calls the DVGeometry methods
@@ -83,6 +83,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             elif info["type"] == "esp":
                 self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=DVGeoName, **options)})
 
+            elif info["type"] == "multi":
+                self.DVGeos.update({name: DVGeometryMulti(comm=self.comm, **options)})
+
             # add each geometry to the constraints object
             for _, DVGeo in self.DVGeos.items():
                 self.DVCon.setDVGeo(DVGeo, name=DVConName)
@@ -125,7 +128,39 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-    def nom_addChild(self, ffd_file, DVGeoName=None, childName=None):
+    def nom_addComponent(self, comp, ffd_file, triMesh, DVGeoName=None):
+        """
+        Add a component a DVGeometryMulti object. This is a wrapper for the DVGeoMulti.addComponent method.
+
+        Parameters
+        ----------
+        comp : str
+            The name of the component.
+
+        ffd_file : str
+            Path to the FFD file for the new DVGeo object for this component.
+
+        triMesh : str, optional
+            Path to the triangulated mesh file for this component.
+
+        DVGeoName : str, optional
+            The name of the DVGeo object to add this component to.
+        """
+
+        # if we have multiple DVGeos use the one specified by name
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
+
+        # can only add a DVGeo to a DVGeoMulti
+        if not isinstance(DVGeo, DVGeometryMulti):
+            raise RuntimeError(
+                f"Only multi-based DVGeo objects can have components added to them, not type:{self.geo_type}"
+            )
+
+        # Add component
+        DVGeoComp = DVGeometry(ffd_file)
+        DVGeo.addComponent(comp=comp, DVGeo=DVGeoComp, triMesh=triMesh)
+
+    def nom_addChild(self, ffd_file, DVGeoName=None, childName=None, comp=None):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
@@ -137,16 +172,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # Add child FFD
         child_ffd = DVGeometry(ffd_file, child=True, name=childName)
-        DVGeo.addChild(child_ffd)
+
+        if comp is None:
+            DVGeo.addChild(child_ffd)
+        else:
+            DVGeo.DVGeoDict[comp].addChild(child_ffd)
 
         # Embed points from parent if not already done
         for pointSet in DVGeo.points:
             if pointSet not in child_ffd.points:
                 child_ffd.addPointSet(DVGeo.points[pointSet], pointSet)
 
-    def nom_add_discipline_coords(self, discipline, points=None, DVGeoName=None):
+    def nom_add_discipline_coords(self, discipline, points=None, DVGeoName=None, **kwargs):
         # TODO remove one of these methods to keep only one method to add pointsets
-
         if points is None:
             # no pointset info is provided, just do a generic i/o. We will add these points during the first compute
             self.add_input("x_%s_in" % discipline, distributed=True, shape_by_conn=True)
@@ -154,7 +192,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False, DVGeoName=DVGeoName)
+            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False, DVGeoName=DVGeoName, **kwargs)
             self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
             self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
 
@@ -182,17 +220,20 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_getDVGeo(self, childName=None, DVGeoName=None):
+    def nom_getDVGeo(self, childName=None, comp=None, DVGeoName=None):
         """
         Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
 
         Parameters
         ----------
-        DVGeoName : string, optional
-            The name of the DVGeo to return, necessary if there are multiple DVGeo objects
-
         childName : str, optional
             Name of the child FFD, if you want a child DVGeo returned
+
+        comp : str, optional
+            Name of the DVGeoMulti component, if this DV is for a multi component
+
+        DVGeoName : str, optional
+            The name of the DVGeo to return, necessary if there are multiple DVGeo objects
 
         Returns
         -------
@@ -205,13 +246,21 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             DVGeo = self.DVGeos["defaultDVGeo"]
 
-        # return the top level DVGeo
-        if childName is None:
-            return DVGeo
+        # return a child of a DVGeoMulti component
+        if childName is not None and comp is not None:
+            return DVGeo.DVGeoDict[comp].children[childName]
 
-        # return a child DVGeo
-        else:
+        # return a component of a DVGeoMulti
+        elif comp is not None:
+            return DVGeo.DVGeoDict[comp]
+
+        # return a child of a DVGeo
+        elif childName is not None:
             return DVGeo.children[childName]
+
+        # return the top level DVGeo
+        else:
+            return DVGeo
 
     def nom_getDVCon(self):
         """
@@ -229,7 +278,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     """
 
     def nom_addGlobalDV(
-        self, dvName, value, func, childName=None, isComposite=False, DVGeoName=None, prependName=False, config=None
+        self,
+        dvName,
+        value,
+        func,
+        childName=None,
+        comp=None,
+        isComposite=False,
+        DVGeoName=None,
+        prependName=False,
+        config=None,
     ):
         """
         Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
@@ -248,6 +306,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         childName : str, optional
             Name of the child FFD, if this DV is for a child FFD.
 
+        comp : str, optional
+            Name of the DVGeoMulti component, if this DV is for a multi component
+
         isComposite : bool, optional
             Whether this DV is to be included in the composite DVs, by default False
 
@@ -261,10 +322,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         """
 
         # if we have multiple DVGeos use the one specified by name
-        DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
+        DVGeo = self.nom_getDVGeo(childName=childName, comp=comp, DVGeoName=DVGeoName)
 
         # global DVs are only added to FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type: {type(DVGeo).__name__}")
 
         # if this DVGeo object has a name attribute, prepend it to match up with what DVGeo is expecting
@@ -285,8 +346,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self,
         dvName,
         axis="y",
-        childName=None,
         pointSelect=None,
+        childName=None,
+        comp=None,
         isComposite=False,
         DVGeoName=None,
         prependName=False,
@@ -294,10 +356,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         config=None,
     ):
         # if we have multiple DVGeos use the one specified by name
-        DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
+        DVGeo = self.nom_getDVGeo(childName=childName, comp=comp, DVGeoName=DVGeoName)
 
         # local DVs are only added to FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type: {type(DVGeo).__name__}")
 
         # if this DVGeo object has a name attribute, prepend it to match up with what DVGeo is expecting
@@ -322,6 +384,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         dvName,
         secIndex,
         childName=None,
+        comp=None,
         axis=1,
         pointSelect=None,
         volList=None,
@@ -346,6 +409,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         childName : str, optional
             Name of the child FFD, if this DV is for a child FFD.
+
+        comp : str, optional
+            Name of the DVGeoMulti component, if this DV is for a multi component
 
         axis : int, optional
             See wrapped
@@ -383,7 +449,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
 
         # local DVs are only added to FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(
                 f"Only FFD-based DVGeo objects can use local section DVs, not type: {type(DVGeo).__name__}"
             )
@@ -402,7 +468,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addShapeFunctionDV(self, dvName, shapes, childName=None, config=None, DVGeoName=None, prependName=False):
+    def nom_addShapeFunctionDV(
+        self, dvName, shapes, childName=None, comp=None, config=None, DVGeoName=None, prependName=False
+    ):
         """
         Add one or more local shape function design variables to the DVGeometry object
         Wrapper for :meth:`addShapeFunctionDV <.DVGeometry.addShapeFunctionDV>`
@@ -418,6 +486,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         childName : str, optional
             Name of the child FFD, if this DV is for a child FFD.
+
+        comp : str, optional
+            Name of the DVGeoMulti component, if this DV is for a multi component
 
         config : str or list, optional
             See wrapped
@@ -522,6 +593,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self,
         name,
         childName=None,
+        comp=None,
         DVGeoName=None,
         curve=None,
         xFraction=None,
@@ -542,10 +614,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # But doing this may create backward incompatibility. So we will use `volumes` for now
 
         # if we have multiple DVGeos use the one specified by name
-        DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
+        DVGeo = self.nom_getDVGeo(childName=childName, comp=comp, DVGeoName=DVGeoName)
 
         # references axes are only needed in FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type: {type(DVGeo).__name__}")
 
         # add ref axis to this DVGeo
@@ -914,7 +986,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                         d_inputs[dvname] += jvtmp
 
             for _, DVGeo in self.DVGeos.items():
-                for ptSetName in DVGeo.ptSetNames:
+                if isinstance(DVGeo, DVGeometryMulti):
+                    ptSetNames = []
+                    for comp in DVGeo.DVGeoDict.keys():
+                        for ptSet in DVGeo.DVGeoDict[comp].ptSetNames:
+                            if ptSet not in ptSetNames:
+                                ptSetNames.append(ptSet)
+                else:
+                    ptSetNames = DVGeo.ptSetNames
+
+                for ptSetName in ptSetNames:
                     if ptSetName in self.omPtSetList:
                         dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
 

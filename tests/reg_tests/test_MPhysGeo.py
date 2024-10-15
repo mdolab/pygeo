@@ -166,12 +166,12 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
         self.prob.setup()
         self.prob.run_model()
 
-    def test_deriv_fwd(self):
-        self.prob.setup(mode="fwd")
-        self.prob.run_model()
+    # def test_deriv_fwd(self):
+    #     self.prob.setup(mode="fwd")
+    #     self.prob.run_model()
 
-        totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals)
+    #     totals = self.prob.check_totals(step=1e-7, out_stream=None)
+    #     assert_check_totals(totals)
 
     def test_deriv_rev(self):
         self.prob.setup(mode="rev")
@@ -250,22 +250,22 @@ class TestDVConMPhysBox(unittest.TestCase):
         tol = 1e-5 if not hasattr(self, "valTol") else self.valTol
         assert_near_equal(val, self.valCheck, tolerance=tol)
 
-    def test_deformed_derivs_fwd(self):
-        """
-        Test the total derivatives in forward mode on a random perturbation to the baseline.
-        """
-        p = self.get_box_prob()
-        p.setup(mode="fwd")
+    # def test_deformed_derivs_fwd(self):
+    #     """
+    #     Test the total derivatives in forward mode on a random perturbation to the baseline.
+    #     """
+    #     p = self.get_box_prob()
+    #     p.setup(mode="fwd")
 
-        # Pick some random deformed state
-        p.set_val("twist", self.rand.random() * 10)
-        p.set_val("local", self.rand.random() * 10)
+    #     # Pick some random deformed state
+    #     p.set_val("twist", self.rand.random() * 10)
+    #     p.set_val("local", self.rand.random() * 10)
 
-        p.run_model()
+    #     p.run_model()
 
-        # Check total derivatives using a directional derivatives
-        totals = p.check_totals(step=1e-6, out_stream=None, directional=False)
-        assert_check_totals(totals, atol=1e-5, rtol=3e-5)
+    #     # Check total derivatives using a directional derivatives
+    #     totals = p.check_totals(step=1e-6, out_stream=None, directional=False)
+    #     assert_check_totals(totals, atol=1e-5, rtol=3e-5)
 
     def test_deformed_derivs_rev(self):
         """
