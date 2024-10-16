@@ -2730,10 +2730,15 @@ class DVConstraints:
         Sum up the total surface area of the triangles included in the
         DVCon surface projected to a plane defined by "axis".
 
+        .. note::
+            The derivative of the projected area can be inaccurate when triangles in the surface mesh are exactly
+            orthogonal to the projection axis. Fortunately, this is a rare occurrence in practice.
+
         Parameters
         ----------
-        axis : str
-            The axis normal to the projection plane. ('x', 'y', or 'z')
+        axis : str or array-like of length 3
+            The axis normal to the projection plane can be specified as a string ('x', 'y', or 'z') or as a vector
+            (e.g [1, 0, 1]) that will be normalized internally
         lower : float
             The lower bound for the area constraint.
 
@@ -2791,12 +2796,23 @@ class DVConstraints:
         self._checkDVGeo(DVGeoName)
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        if axis == "x":
-            axis = np.array([1, 0, 0])
-        elif axis == "y":
-            axis = np.array([0, 1, 0])
-        elif axis == "z":
-            axis = np.array([0, 0, 1])
+        if isinstance(axis, str):
+            if axis.lower() == "x":
+                axis = np.array([1, 0, 0])
+            elif axis.lower() == "y":
+                axis = np.array([0, 1, 0])
+            elif axis.lower() == "z":
+                axis = np.array([0, 0, 1])
+            else:
+                raise Error(f"Unrecognized axis string: {axis}, should be x y or z")
+        else:
+            try:
+                axis = np.array(axis).flatten()
+                axis = axis / np.linalg.norm(axis)
+                if len(axis) != 3:
+                    raise Error("Axis array must contain 3 elements")
+            except ValueError:
+                raise Error("Axis must be a string or a 3 element array")
 
         typeName = "projAreaCon"
         if typeName not in self.constraints:
@@ -2810,8 +2826,8 @@ class DVConstraints:
         self.constraints[typeName][conName] = ProjectedAreaConstraint(
             conName,
             p0,
-            p1 - p0,
-            p2 - p0,
+            p1,
+            p2,
             axis,
             lower,
             upper,
