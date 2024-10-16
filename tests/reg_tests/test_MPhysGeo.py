@@ -466,7 +466,6 @@ class TestDVGeoMPhysESP(unittest.TestCase):
         dvInfo = self.dvInfo
         procs = self.N_PROCS
 
-    def modelSetup(self):
         class ESPGroup(Group):
             def setup(self):
                 self.add_subsystem("dvs", IndepVarComp(), promotes=["*"])
