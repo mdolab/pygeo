@@ -7,6 +7,7 @@ from stl import mesh
 import commonUtils
 from pygeo.mphys import OM_DVGEOCOMP
 from pyspline import Curve
+from baseclasses.utils import Error
 
 try:
     from openmdao.api import IndepVarComp, Problem, Group
@@ -444,9 +445,13 @@ class TestDVConMPhysBox(unittest.TestCase):
 
 
 # parameters for ESP-based DVGeo tests
+fullESPDV = {"name": "cubex0", "lower": np.array([-10.0]), "upper": np.array([10.0]), "scale": 0.1, "dh": 0.0001}
+simpleESPDV = {"name": "cubey0"}
+midESPDV = {"name": "cubez0", "lower": np.array([-10.0]), "upper": np.array([10.0])}
+
 esp_test_params = [
-    {"name": "serial", "N_PROCS": 1},
-    {"name": "parallel_4procs", "N_PROCS": 4},
+    {"name": "serial", "N_PROCS": 1, "dvInfo": [fullESPDV, simpleESPDV, midESPDV]},
+    {"name": "parallel_4procs", "N_PROCS": 4, "dvInfo": [fullESPDV, simpleESPDV, midESPDV]},
 ]
 
 
@@ -457,6 +462,8 @@ esp_test_params = [
 @parameterized_class(esp_test_params)
 class TestDVGeoMPhysESP(unittest.TestCase):
     def setUp(self):
+        # give the OM Group access to the test case attributes
+        dvInfo = self.dvInfo
         procs = self.N_PROCS
 
     def modelSetup(self):
@@ -468,6 +475,7 @@ class TestDVGeoMPhysESP(unittest.TestCase):
             def configure(self):
                 # get the DVGeo object out of the geometry component
                 DVGeo = self.geometry.nom_getDVGeo()
+                self.assertIsNotNone(DVGeo)
 
                 # add a point set on the surface
                 vertex1 = np.array([-2.0, -2.0, -2.0])
@@ -479,21 +487,42 @@ class TestDVGeoMPhysESP(unittest.TestCase):
                 top = np.array([0.0, 0.1, 1.5])
                 bottom = np.array([-1.9, -1.1, -2.0])
                 initpts = np.vstack([vertex1, vertex2, left, right, front, back, top, bottom, left, right])
+
+                ptName = "mypts"
                 distglobal = self.geometry.nom_addPointSet.addPointSet(
-                    initpts.flatten(), "mypts", cache_projections=False
+                    initpts.flatten(), ptName, cache_projections=False
                 )
                 self.assertAlmostEqual(distglobal, 0.0, 8)
                 DVGeo._updateModel()
                 DVGeo._updateProjectedPts()
                 self.assertTrue(DVGeo.pointSetUpToDate)
-                self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
+                self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets[ptName].proj_pts), 0.0, 10)
 
                 for dv in dvInfo:
-                    self.geometry.nom_addESPVariable()
+                    if "upper" not in dv:
+                        dv["upper"] = None
+
+                    if "lower" not in dv:
+                        dv["lower"] = None
+
+                    if "scale" not in dv:
+                        dv["scale"] = None
+
+                    if "dh" not in dv:
+                        dv["dh"] = 0.001
+
+                    dvName = dv["name"]
+                    self.geometry.nom_addESPVariable(dvName, dh=dv["dh"])
 
                     self.dvs.add_output(dvName, dv["val"])
                     self.connect(dvName, f"geometry.{dvName}")
-                    self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"])
+
+                    self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"], scaler=dv["scale"])
+
+                self.assertIsNotNone(DVGeo)
+
+                with self.assertRaises(Error):
+                    self.geometry.nom_addESPVariable("cubew0")
 
                 self.add_constraint(f"geometry.{ptName}")
 
