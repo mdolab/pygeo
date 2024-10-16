@@ -43,85 +43,220 @@ localDVFuncParamsParent = ["xdir"]
 globalDVFuncParamsChild = ["nestedX", -0.5, commonUtils.childAxisPoints, childName]
 shapeFuncParamsParent = ["shapeFunc", []]
 
-globalDVParent = {"funcName": "nom_addGlobalDV", "funcParams": globalDVFuncParamsParent, "lower": -1.0, "upper": 0.0, "val": -1.0}
-localDVParent = {"funcName": "nom_addLocalDV", "funcParams": localDVFuncParamsParent, "lower": -1.0, "upper": 1.0, "val": 12*[0.0]}
-globalDVChild = {"funcName": "nom_addGlobalDV", "funcParams": globalDVFuncParamsChild, "lower": -1.0, "upper": 0.0, "val": -1.0}
-shapeFuncDV = {"funcName": "nom_addShapeFunctionDV", "funcParams": shapeFuncParamsParent, "lower": -10.0, "upper": 10.0, "val": np.zeros((2))}
+globalDVParent = {
+    "funcName": "nom_addGlobalDV",
+    "funcParams": globalDVFuncParamsParent,
+    "lower": -1.0,
+    "upper": 0.0,
+    "val": -1.0,
+}
+localDVParent = {
+    "funcName": "nom_addLocalDV",
+    "funcParams": localDVFuncParamsParent,
+    "lower": -1.0,
+    "upper": 1.0,
+    "val": 12 * [0.0],
+}
+globalDVChild = {
+    "funcName": "nom_addGlobalDV",
+    "funcParams": globalDVFuncParamsChild,
+    "lower": -1.0,
+    "upper": 0.0,
+    "val": -1.0,
+}
+shapeFuncDV = {
+    "funcName": "nom_addShapeFunctionDV",
+    "funcParams": shapeFuncParamsParent,
+    "lower": -10.0,
+    "upper": 10.0,
+    "val": np.zeros((2)),
+}
 
 ffd_test_params = [
-    {"name": "MPhys_FFD_oneFFD_global", "parentFFD": outerFFD, "childFFD": None, "dvInfo": [globalDVParent]},                        # test_DVGeometry #1
-    {"name": "MPhys_FFD_oneFFD_global+local", "parentFFD": outerFFD, "childFFD": None, "dvInfo": [globalDVParent, localDVParent]},   # test_DVGeometry #2
-    {"name": "MPhys_FFD_childFFD_global", "parentFFD": outerFFD, "childFFD": innerFFD, "dvInfo": [globalDVParent, globalDVChild]},       # test_DVGeometry #3
-    {"name": "MPhys_FFD_shapeFunc", "parentFFD": rectFFD, "childFFD": None, "dvInfo": [shapeFuncDV]},                               # test_DVGeometry test_shape_functions
+    {
+        "name": "MPhys_FFD_oneFFD_global",
+        "parentFFD": outerFFD,
+        "childFFD": None,
+        "dvInfo": [globalDVParent],
+    },  # test_DVGeometry #1
+    {
+        "name": "MPhys_FFD_oneFFD_global+local",
+        "parentFFD": outerFFD,
+        "childFFD": None,
+        "dvInfo": [globalDVParent, localDVParent],
+    },  # test_DVGeometry #2
+    {
+        "name": "MPhys_FFD_childFFD_global",
+        "parentFFD": outerFFD,
+        "childFFD": innerFFD,
+        "dvInfo": [globalDVParent, globalDVChild],
+    },  # test_DVGeometry #3
+    {
+        "name": "MPhys_FFD_shapeFunc",
+        "parentFFD": rectFFD,
+        "childFFD": None,
+        "dvInfo": [shapeFuncDV],
+    },  # test_DVGeometry test_shape_functions
 ]
 
 # DVConstraints functionals to test
 test_params_constraints_box = [
     {
         "conFunc": "nom_addThicknessConstraints1D",
-        "kwargs": {"name": "func", "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]], "nCon": 3, "axis": [1, 0, 0], "scaled": False},
+        "kwargs": {
+            "name": "func",
+            "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]],
+            "nCon": 3,
+            "axis": [1, 0, 0],
+            "scaled": False,
+        },
         "valCheck": 2 * np.ones(3),
         "valTol": 1e-4,
     },
     {
         "conFunc": "nom_addThicknessConstraints1D",
-        "kwargs": {"name": "func", "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]], "nCon": 5, "axis": [0, 1, 0], "scaled": False},
+        "kwargs": {
+            "name": "func",
+            "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]],
+            "nCon": 5,
+            "axis": [0, 1, 0],
+            "scaled": False,
+        },
         "valCheck": np.ones(5),
         "valTol": 3e-5,
     },
     {
         "conFunc": "nom_addThicknessConstraints1D",
-        "kwargs": {"name": "func", "ptList": [[-0.5, 0.0, 4.0], [0.5, 0.0, 4.0]], "nCon": 5, "axis": [0, 0, 1], "scaled": False},
+        "kwargs": {
+            "name": "func",
+            "ptList": [[-0.5, 0.0, 4.0], [0.5, 0.0, 4.0]],
+            "nCon": 5,
+            "axis": [0, 0, 1],
+            "scaled": False,
+        },
         "valCheck": 8 * np.ones(5),
     },
     {
         "conFunc": "nom_addThicknessConstraints1D",
-        "kwargs": {"name": "func", "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]], "nCon": 3, "axis": [1, 0, 0], "scaled": False, "projected": True},
+        "kwargs": {
+            "name": "func",
+            "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]],
+            "nCon": 3,
+            "axis": [1, 0, 0],
+            "scaled": False,
+            "projected": True,
+        },
         "valCheck": 2 * np.ones(3),
         "valTol": 2e-4,
     },
     {
         "conFunc": "nom_addThicknessConstraints1D",
-        "kwargs": {"name": "func", "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]], "nCon": 5, "axis": [0, 1, 0], "scaled": False, "projected": True},
+        "kwargs": {
+            "name": "func",
+            "ptList": [[0.0, 0.0, 0.1], [0.0, 0.0, 7.9]],
+            "nCon": 5,
+            "axis": [0, 1, 0],
+            "scaled": False,
+            "projected": True,
+        },
         "valCheck": np.ones(5),
         "valTol": 2e-4,
     },
     {
         "conFunc": "nom_addThicknessConstraints1D",
-        "kwargs": {"name": "func", "ptList": [[-0.5, 0.0, 4.0], [0.5, 0.0, 4.0]], "nCon": 5, "axis": [0, 0, 1], "scaled": False, "projected": True},
+        "kwargs": {
+            "name": "func",
+            "ptList": [[-0.5, 0.0, 4.0], [0.5, 0.0, 4.0]],
+            "nCon": 5,
+            "axis": [0, 0, 1],
+            "scaled": False,
+            "projected": True,
+        },
         "valCheck": 8 * np.ones(5),
     },
     {
         "conFunc": "nom_addThicknessConstraints2D",
-        "kwargs": {"name": "func", "leList": [[-0.25, 0.0, 0.1], [-0.25, 0.0, 7.9]], "teList": [[0.75, 0.0, 0.1], [0.75, 0.0, 7.9]], "nSpan": 2, "nChord": 3, "scaled": False},
+        "kwargs": {
+            "name": "func",
+            "leList": [[-0.25, 0.0, 0.1], [-0.25, 0.0, 7.9]],
+            "teList": [[0.75, 0.0, 0.1], [0.75, 0.0, 7.9]],
+            "nSpan": 2,
+            "nChord": 3,
+            "scaled": False,
+        },
         "valCheck": np.ones(6),
     },
     {
         "conFunc": "nom_addThicknessConstraints2D",
-        "kwargs": {"name": "func", "leList": [[0.0, -0.25, 0.1], [0.0, -0.25, 7.9]], "teList": [[0.0, 0.25, 0.1], [0.0, 0.25, 7.9]], "nSpan": 2, "nChord": 3, "scaled": False},
+        "kwargs": {
+            "name": "func",
+            "leList": [[0.0, -0.25, 0.1], [0.0, -0.25, 7.9]],
+            "teList": [[0.0, 0.25, 0.1], [0.0, 0.25, 7.9]],
+            "nSpan": 2,
+            "nChord": 3,
+            "scaled": False,
+        },
         "valCheck": 2 * np.ones(6),
     },
     {
         "conFunc": "nom_addThicknessConstraints2D",
-        "kwargs": {"name": "func", "leList": [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]], "teList": [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]], "nSpan": 2, "nChord": 3, "scaled": False},
+        "kwargs": {
+            "name": "func",
+            "leList": [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]],
+            "teList": [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]],
+            "nSpan": 2,
+            "nChord": 3,
+            "scaled": False,
+        },
         "valCheck": 8 * np.ones(6),
     },
     {
         "conFunc": "nom_addThicknessConstraints2D",
-        "kwargs": {"name": "func", "leList": [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]], "teList": [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]], "nSpan": 2, "nChord": 3, "scaled": False, "projected": True},
+        "kwargs": {
+            "name": "func",
+            "leList": [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]],
+            "teList": [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]],
+            "nSpan": 2,
+            "nChord": 3,
+            "scaled": False,
+            "projected": True,
+        },
         "valCheck": 8 * np.ones(6),
     },
     {
         "conFunc": "nom_addVolumeConstraint",
-        "kwargs": {"name": "func", "leList": [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]], "teList": [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]], "nSpan": 4, "nChord": 4, "scaled": False},
+        "kwargs": {
+            "name": "func",
+            "leList": [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]],
+            "teList": [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]],
+            "nSpan": 4,
+            "nChord": 4,
+            "scaled": False,
+        },
         "valCheck": 4.0,
         "valTol": 1e-4,
     },
     {"conFunc": "nom_addSurfaceAreaConstraint", "kwargs": {"name": "func", "scaled": False}, "valCheck": 52.0},
-    {"conFunc": "nom_addProjectedAreaConstraint", "kwargs": {"name": "func", "axis": "x", "scaled": False}, "valCheck": 8.0, "valTol": 3e-2},
-    {"conFunc": "nom_addProjectedAreaConstraint", "kwargs": {"name": "func", "axis": "y", "scaled": False}, "valCheck": 16.0, "valTol": 3e-2},
-    {"conFunc": "nom_addProjectedAreaConstraint", "kwargs": {"name": "func", "axis": "z", "scaled": False}, "valCheck": 2.0, "valTol": 3e-2},
+    {
+        "conFunc": "nom_addProjectedAreaConstraint",
+        "kwargs": {"name": "func", "axis": "x", "scaled": False},
+        "valCheck": 8.0,
+        "valTol": 3e-2,
+    },
+    {
+        "conFunc": "nom_addProjectedAreaConstraint",
+        "kwargs": {"name": "func", "axis": "y", "scaled": False},
+        "valCheck": 16.0,
+        "valTol": 3e-2,
+    },
+    {
+        "conFunc": "nom_addProjectedAreaConstraint",
+        "kwargs": {"name": "func", "axis": "z", "scaled": False},
+        "valCheck": 2.0,
+        "valTol": 3e-2,
+    },
 ]
+
 
 @unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
 @parameterized_class(ffd_test_params)
@@ -165,7 +300,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
                     c1 = Curve(X=axisPoints, k=2)
                     self.geometry.nom_addRefAxis("nestedAxis", childName=childName, curve=c1, axis="y")
 
-                # add each DV to the geometry 
+                # add each DV to the geometry
                 for dv in dvInfo:
                     dvName = dv["funcParams"][0]
 
@@ -175,7 +310,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
 
                     # call the function being tested
                     getattr(self.geometry, dv["funcName"])(*dv["funcParams"])
-                    
+
                     # OM stuff
                     self.dvs.add_output(dvName, dv["val"])
                     self.connect(dvName, f"geometry.{dvName}")
@@ -309,65 +444,81 @@ class TestDVConMPhysBox(unittest.TestCase):
 
 
 # parameters for ESP-based DVGeo tests
-# esp_test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "parallel_4procs"}]
+esp_test_params = [
+    {"name": "serial", "N_PROCS": 1},
+    {"name": "parallel_4procs", "N_PROCS": 4},
+]
 
-# @unittest.skipUnless(mphysInstalled and ocsmInstalled, "OpenMDAO, MPhys, and ESP are required to test the ESP part of the pyGeo MPhys wrapper")
-# @parameterized_class(esp_test_params)
-# class TestDVGeoMPhysESP(unittest.TestCase):
-#     def setUp(self):
-#         self.input_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-#     def modelSetup(self):
+@unittest.skipUnless(
+    omInstalled and ocsmInstalled,
+    "OpenMDAO, MPhys, and ESP are required to test the ESP part of the pyGeo MPhys wrapper",
+)
+@parameterized_class(esp_test_params)
+class TestDVGeoMPhysESP(unittest.TestCase):
+    def setUp(self):
+        procs = self.N_PROCS
 
-#         class ESPGroup(Multipoint):
-#             def setup(self):
-#                 self.add_subsystem("dvs", IndepVarComp(), promotes=["*"])
-#                 self.add_subsystem("geometry", OM_DVGEOCOMP(file=espBox, type="esp"))
+    def modelSetup(self):
+        class ESPGroup(Group):
+            def setup(self):
+                self.add_subsystem("dvs", IndepVarComp(), promotes=["*"])
+                self.add_subsystem("geometry", OM_DVGEOCOMP(file=espBox, type="esp"))
 
-#             def configure(self):
+            def configure(self):
+                # get the DVGeo object out of the geometry component
+                DVGeo = self.geometry.nom_getDVGeo()
 
-#                 # add a point set on the surface
-#                 vertex1 = np.array([-2.0, -2.0, -2.0])
-#                 vertex2 = np.array([1.5, 1.5, 1.5])
-#                 left = np.array([-2.0, -1.1, -1.1])
-#                 right = np.array([1.5, -1.2, -0.1])
-#                 front = np.array([0.25, 1.5, 0.3])
-#                 back = np.array([1.2, -2.0, -0.3])
-#                 top = np.array([0.0, 0.1, 1.5])
-#                 bottom = np.array([-1.9, -1.1, -2.0])
-#                 initpts = np.vstack([vertex1, vertex2, left, right, front, back, top, bottom, left, right])
-#                 distglobal = self.geometry.nom_addPointSet.addPointSet(initpts.flatten(), "mypts", cache_projections=False)
-#                 self.assertAlmostEqual(distglobal, 0.0, 8)
-#                 DVGeo._updateModel()
-#                 DVGeo._updateProjectedPts()
-#                 self.assertTrue(DVGeo.pointSetUpToDate)
-#                 self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
+                # add a point set on the surface
+                vertex1 = np.array([-2.0, -2.0, -2.0])
+                vertex2 = np.array([1.5, 1.5, 1.5])
+                left = np.array([-2.0, -1.1, -1.1])
+                right = np.array([1.5, -1.2, -0.1])
+                front = np.array([0.25, 1.5, 0.3])
+                back = np.array([1.2, -2.0, -0.3])
+                top = np.array([0.0, 0.1, 1.5])
+                bottom = np.array([-1.9, -1.1, -2.0])
+                initpts = np.vstack([vertex1, vertex2, left, right, front, back, top, bottom, left, right])
+                distglobal = self.geometry.nom_addPointSet.addPointSet(
+                    initpts.flatten(), "mypts", cache_projections=False
+                )
+                self.assertAlmostEqual(distglobal, 0.0, 8)
+                DVGeo._updateModel()
+                DVGeo._updateProjectedPts()
+                self.assertTrue(DVGeo.pointSetUpToDate)
+                self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
 
-#                 for dv in dvInfo:
-#                     self.geometry.nom_addESPVariable()
-                    
-#                     self.dvs.add_output(dvName, dv["val"])
-#                     self.connect(dvName, f"geometry.{dvName}")
-#                     self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"])
+                for dv in dvInfo:
+                    self.geometry.nom_addESPVariable()
 
-#                 self.add_constraint(f"geometry.{ptName}")
+                    self.dvs.add_output(dvName, dv["val"])
+                    self.connect(dvName, f"geometry.{dvName}")
+                    self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"])
 
-#         prob = Problem(model=ESPGroup())
-#         prob.setup(mode="rev")
+                self.add_constraint(f"geometry.{ptName}")
 
-#         return prob
-    
-#     def test_run_model(self):
-#         self.prob.run_model()
+        prob = Problem(model=ESPGroup())
 
-#     def testDVs(self):
-#         self.prob.run_model()
+        return prob
 
-#         data = self.prob.check_totals(step=1e-7, compact_print=True)
-#         for _, err in data.items():
+    def test_run_model(self):
+        self.prob.setup()
+        self.prob.run_model()
 
-#             rel_err = err["rel error"]
-#             assert_near_equal(rel_err.forward, 0.0, 1e-5)
+    def test_deriv_fwd(self):
+        self.prob.setup(mode="fwd")
+        self.prob.run_model()
+
+        totals = self.prob.check_totals(step=1e-7, out_stream=None)
+        assert_check_totals(totals)
+
+    def test_deriv_rev(self):
+        self.prob.setup(mode="rev")
+        self.prob.run_model()
+
+        totals = self.prob.check_totals(step=1e-5, out_stream=None)
+        assert_check_totals(totals, atol=1e-5, rtol=1e-5)
+
 
 if __name__ == "__main__":
     unittest.main()
