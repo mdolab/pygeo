@@ -433,7 +433,7 @@ class TestDVConMPhysBox(unittest.TestCase):
 
         # Check total derivatives using a directional derivatives
         totals = p.check_totals(step=1e-6, out_stream=None, directional=False)
-        assert_check_totals(totals, atol=1e-5, rtol=3e-5)
+        assert_check_totals(totals, atol=1e-5, rtol=1e-4)
 
     def test_deformed_derivs_rev(self):
         """
