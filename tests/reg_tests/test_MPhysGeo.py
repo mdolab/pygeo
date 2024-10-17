@@ -35,7 +35,7 @@ input_path = os.path.dirname(os.path.abspath(__file__))
 outerFFD = os.path.join(input_path, "../../input_files/outerBoxFFD.xyz")
 innerFFD = os.path.join(input_path, "../../input_files/simpleInnerFFD.xyz")
 rectFFD = os.path.join(input_path, "../../input_files/2x1x8_rectangle.xyz")
-espBox = os.path.join(input_path, "../input_files/esp/box.csm")
+espBox = os.path.join(input_path, "../../input_files/esp/box.csm")
 
 # parameters for FFD-based DVGeo tests
 childName = "childFFD"
@@ -478,7 +478,6 @@ class TestDVGeoMPhysESP(unittest.TestCase):
     def setUp(self):
         # give the OM Group access to the test case attributes
         dvInfo = self.dvInfo
-        procs = self.N_PROCS
 
         class ESPGroup(Group):
             def setup(self):
@@ -488,7 +487,6 @@ class TestDVGeoMPhysESP(unittest.TestCase):
             def configure(self):
                 # get the DVGeo object out of the geometry component
                 DVGeo = self.geometry.nom_getDVGeo()
-                self.assertIsNotNone(DVGeo)
 
                 # add a point set on the surface
                 vertex1 = np.array([-2.0, -2.0, -2.0])
@@ -499,17 +497,13 @@ class TestDVGeoMPhysESP(unittest.TestCase):
                 back = np.array([1.2, -2.0, -0.3])
                 top = np.array([0.0, 0.1, 1.5])
                 bottom = np.array([-1.9, -1.1, -2.0])
-                initpts = np.vstack([vertex1, vertex2, left, right, front, back, top, bottom, left, right])
+                self.initpts = np.vstack([vertex1, vertex2, left, right, front, back, top, bottom, left, right])
 
                 ptName = "mypts"
-                distglobal = self.geometry.nom_addPointSet.addPointSet(
-                    initpts.flatten(), ptName, cache_projections=False
-                )
-                self.assertAlmostEqual(distglobal, 0.0, 8)
+                self.distglobal = self.geometry.nom_addPointSet(self.initpts.flatten(), ptName, cache_projections=False)
+                self.projPts = DVGeo.pointSets[ptName].proj_pts
                 DVGeo._updateModel()
                 DVGeo._updateProjectedPts()
-                self.assertTrue(DVGeo.pointSetUpToDate)
-                self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets[ptName].proj_pts), 0.0, 10)
 
                 for dv in dvInfo:
                     if "upper" not in dv:
@@ -527,24 +521,29 @@ class TestDVGeoMPhysESP(unittest.TestCase):
                     dvName = dv["name"]
                     self.geometry.nom_addESPVariable(dvName, dh=dv["dh"])
 
-                    self.dvs.add_output(dvName, dv["val"])
+                    self.dvs.add_output(dvName)
                     self.connect(dvName, f"geometry.{dvName}")
 
                     self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"], scaler=dv["scale"])
 
-                self.assertIsNotNone(DVGeo)
-
-                with self.assertRaises(Error):
-                    self.geometry.nom_addESPVariable("cubew0")
-
                 self.add_constraint(f"geometry.{ptName}")
 
-        prob = Problem(model=ESPGroup())
-
-        return prob
+        self.prob = Problem(model=ESPGroup())
 
     def test_run_model(self):
         self.prob.setup()
+        with self.assertRaises(Error):
+            try:
+                self.prob.model.geometry.nom_addESPVariable("cubew0")
+            except Error as e:
+                mes = e.message
+                raise e
+
+        self.assertEqual(mes, 'User specified design parameter name "cubew0" which was not found in the CSM file')
+
+        assert_near_equal(self.prob.model.distglobal, 0.0, 8)
+        assert_near_equal(np.linalg.norm(self.prob.model.initpts - self.prob.model.projPts), 0.0, 10)
+
         self.prob.run_model()
 
     def test_deriv_fwd(self):
