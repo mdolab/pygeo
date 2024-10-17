@@ -19,7 +19,7 @@ except ImportError:
     omInstalled = False
 
 try:
-    import pyOCSM  # noqa: E999,F401
+    import pyOCSM  # noqa: F401
 
     ocsmInstalled = True
 
