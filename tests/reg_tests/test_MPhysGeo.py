@@ -4,11 +4,14 @@ import unittest
 
 # External modules
 from baseclasses.utils import Error
+import commonUtils
 import numpy as np
 from parameterized import parameterized_class
-from pygeo.mphys import OM_DVGEOCOMP
 from pyspline import Curve
 from stl import mesh
+
+# First party modules
+from pygeo.mphys import OM_DVGEOCOMP
 
 try:
     # External modules
@@ -29,8 +32,6 @@ try:
 except ImportError:
     ocsmInstalled = False
 
-# First party modules
-import commonUtils
 
 # input files for all DVGeo types
 input_path = os.path.dirname(os.path.abspath(__file__))
