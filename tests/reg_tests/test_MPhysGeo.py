@@ -19,11 +19,7 @@ except ImportError:
     omInstalled = False
 
 try:
-    # External modules
-    import pyOCSM  # noqa
-
-    # First party modules
-    from pygeo import DVGeometryESP
+    from pyOCSM import ocsm
 
     ocsmInstalled = True
 
