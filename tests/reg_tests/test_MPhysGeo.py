@@ -3,17 +3,18 @@ import os
 import unittest
 
 # External modules
+from baseclasses.utils import Error
 import numpy as np
 from parameterized import parameterized_class
-from stl import mesh
-
-# Local modules
-from baseclasses.utils import Error
-import commonUtils
 from pygeo.mphys import OM_DVGEOCOMP
 from pyspline import Curve
+from stl import mesh
+
+# First party modules
+import commonUtils
 
 try:
+    # External modules
     from openmdao.api import Group, IndepVarComp, Problem
     from openmdao.utils.assert_utils import assert_check_totals, assert_near_equal
 
@@ -23,6 +24,7 @@ except ImportError:
     omInstalled = False
 
 try:
+    # External modules
     import pyOCSM  # noqa: F401
 
     ocsmInstalled = True
