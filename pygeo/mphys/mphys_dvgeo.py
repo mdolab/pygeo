@@ -201,7 +201,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
-        DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        if isinstance(DVGeo, DVGeometryESP):
+            # DVGeoESP can return a value to check the pointset distribution
+            dMax_global = DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        else:
+            DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
         if isinstance(DVGeo, DVGeometry):
@@ -214,6 +218,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if add_output:
             # add an output to the om component
             self.add_output(ptName, distributed=True, val=points.flatten())
+
+        if isinstance(DVGeo, DVGeometryESP):
+            return dMax_global
 
     def nom_add_point_dict(self, point_dict):
         # add every pointset in the dict, and set the ptset name as the key
@@ -569,7 +576,32 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(dvName, distributed=False, shape=1, val=val)
 
-    def nom_addESPVariable(self, desmptr_name, isComposite=False, DVGeoName=None, **kwargs):
+    def nom_addESPVariable(self, desmptr_name, rows=None, cols=None, dh=0.001, isComposite=False, DVGeoName=None):
+        """
+        Add an ESP design variables to the DVGeometryESP object
+        Wrapper for :meth:`addVariable <.DVGeometryESP.addVariable>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
+
+        Parameters
+        ----------
+        desmptr_name : str
+            See :meth:`addVariable <.DVGeometryESP.addVariable>`
+        rows : list or None, optional
+            See :meth:`addVariable <.DVGeometryESP.addVariable>`
+        cols : list or None, optional
+            See :meth:`addVariable <.DVGeometryESP.addVariable>`
+        dh : float, optional
+            See :meth:`addVariable <.DVGeometryESP.addVariable>`
+        isComposite : bool, optional
+            Whether this DV is to be included in the composite DVs, by default False
+        DVGeoName : string, optional
+            The name of the DVGeo to add DVs to, necessary if there are multiple DVGeo objects
+
+        Raises
+        ------
+        RuntimeError
+            Raised if the underlying DVGeo parameterization is not ESP-based
+        """
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
@@ -578,7 +610,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type: {type(DVGeo).__name__}")
 
         # actually add the DV to ESP
-        DVGeo.addVariable(desmptr_name, **kwargs)
+        DVGeo.addVariable(desmptr_name, rows=rows, cols=cols, dh=dh)
 
         # get the value
         val = DVGeo.DVs[desmptr_name].value.copy()
