@@ -1,6 +1,8 @@
+# Standard Python modules
 import os
 import unittest
 
+# External modules
 from baseclasses.utils import Error
 import numpy as np
 from parameterized import parameterized_class
@@ -8,6 +10,7 @@ from pygeo.mphys import OM_DVGEOCOMP
 from pyspline import Curve
 from stl import mesh
 
+# Local modules
 import commonUtils
 
 try:
