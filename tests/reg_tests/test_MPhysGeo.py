@@ -19,7 +19,7 @@ except ImportError:
     omInstalled = False
 
 try:
-    from pyOCSM
+    import pyOCSM
 
     ocsmInstalled = True
 
