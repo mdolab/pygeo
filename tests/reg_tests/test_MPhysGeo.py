@@ -10,9 +10,6 @@ from pygeo.mphys import OM_DVGEOCOMP
 from pyspline import Curve
 from stl import mesh
 
-# First party modules
-import commonUtils
-
 try:
     # External modules
     from openmdao.api import Group, IndepVarComp, Problem
@@ -31,6 +28,9 @@ try:
 
 except ImportError:
     ocsmInstalled = False
+
+# First party modules
+import commonUtils
 
 # input files for all DVGeo types
 input_path = os.path.dirname(os.path.abspath(__file__))
