@@ -1,17 +1,18 @@
-import unittest
 import os
+import unittest
+
+from baseclasses.utils import Error
 import numpy as np
 from parameterized import parameterized_class
+from pygeo.mphys import OM_DVGEOCOMP
+from pyspline import Curve
 from stl import mesh
 
 import commonUtils
-from pygeo.mphys import OM_DVGEOCOMP
-from pyspline import Curve
-from baseclasses.utils import Error
 
 try:
-    from openmdao.api import IndepVarComp, Problem, Group
-    from openmdao.utils.assert_utils import assert_near_equal, assert_check_totals
+    from openmdao.api import Group, IndepVarComp, Problem
+    from openmdao.utils.assert_utils import assert_check_totals, assert_near_equal
 
     omInstalled = True
 
