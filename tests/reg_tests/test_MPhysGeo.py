@@ -1,6 +1,7 @@
 # Standard Python modules
 import os
 import unittest
+import copy
 
 # External modules
 from baseclasses.utils import Error
@@ -359,7 +360,7 @@ class TestDVConMPhysBox(unittest.TestCase):
         """
         # Parameterized values
         conFunc = self.conFunc
-        paramKwargs = self.kwargs
+        paramKwargs = copy.deepcopy(self.kwargs)
 
         # Update the parameterized constraint keyword arguments with any manually specified ones
         paramKwargs.update(kwargs)
