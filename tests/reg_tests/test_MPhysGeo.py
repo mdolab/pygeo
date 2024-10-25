@@ -1,7 +1,7 @@
 # Standard Python modules
+import copy
 import os
 import unittest
-import copy
 
 # External modules
 from baseclasses.utils import Error
