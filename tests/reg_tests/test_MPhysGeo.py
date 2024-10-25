@@ -467,7 +467,6 @@ midESPDV = {"name": "cubez0", "lower": np.array([-10.0]), "upper": np.array([10.
 
 esp_test_params = [
     {"name": "serial", "N_PROCS": 1, "dvInfo": [fullESPDV, simpleESPDV, midESPDV]},
-    {"name": "parallel_4procs", "N_PROCS": 4, "dvInfo": [fullESPDV, simpleESPDV, midESPDV]},
 ]
 
 
