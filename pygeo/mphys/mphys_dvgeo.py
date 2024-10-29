@@ -648,6 +648,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeoName="default",
         compNames=None,
         addToPyOpt=True,
+        projected=False
     ):
         self.DVCon.addDistanceConstraints1D(
             ptList,
@@ -658,7 +659,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             surfaceName=surfaceName,
             DVGeoName=DVGeoName,
             compNames=compNames,
-            addToPyOpt=addToPyOpt
+            addToPyOpt=addToPyOpt,
+            projected=projected
         )
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 

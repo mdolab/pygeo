@@ -3437,7 +3437,8 @@ class DVConstraints:
         name=None,
         addToPyOpt=True,
         DVGeoName="default",
-        compNames=None
+        compNames=None,
+        projected=False
     ):
         r"""
         Add a set of distance constraints.
@@ -3535,7 +3536,7 @@ class DVConstraints:
             conName = name
 
         self.constraints[typeName][conName] = DistanceConstraint(
-            conName, moving_pts, anchored_pts, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
+            conName, moving_pts, anchored_pts, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames, projected=projected
         )
 
     def addDistanceConstraints1D(
@@ -3551,7 +3552,8 @@ class DVConstraints:
         addToPyOpt=True,
         surfaceName="default",
         DVGeoName="default",
-        compNames=None
+        compNames=None,
+        projected=False
     ):
         r"""
         Add a set of distance constraints oriented along a poly-line.
@@ -3693,7 +3695,7 @@ class DVConstraints:
             conName = name
 
         self.constraints[typeName][conName] = DistanceConstraint(
-            conName, moving_pts, anchored_pts, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
+            conName, moving_pts, anchored_pts, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames, projected=projected
         )
 
     def _checkDVGeo(self, name="default"):

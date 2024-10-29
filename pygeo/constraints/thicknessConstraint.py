@@ -96,12 +96,13 @@ class DistanceConstraint(GeometricConstraint):
     made. The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, moving_pts, anchor_pts,  lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames):
+    def __init__(self, name, moving_pts, anchor_pts,  lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames, projected=False):
         super().__init__(name, len(moving_pts), lower, upper, scale, DVGeo, addToPyOpt)
 
         self.moving_pts = moving_pts
         self.scaled = scaled
         self.anchored_pts = anchor_pts
+        self.projected = projected
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -109,8 +110,13 @@ class DistanceConstraint(GeometricConstraint):
 
         # Now get the reference lengths
         self.D0 = np.zeros(self.nCon)
+        self.dir_vec = np.zeros((self.nCon, 3))
         for i in range(self.nCon):
-            self.D0[i] = geo_utils.norm.euclideanNorm(self.moving_pts[i] - self.anchored_pts[i])
+            vec = self.moving_pts[i] - self.anchored_pts[i]
+            self.D0[i] = geo_utils.norm.euclideanNorm(vec)
+            
+            if self.projected:
+                self.dir_vec[i] = vec / self.D0[i]
             
     def evalFunctions(self, funcs, config):
         """
@@ -125,8 +131,14 @@ class DistanceConstraint(GeometricConstraint):
         self.moving_pts = self.DVGeo.update(self.name, config=config)
         D = np.zeros(self.nCon)
         for i in range(self.nCon):
-            dx = self.moving_pts[i] - self.anchored_pts[i]
-            D[i] = geo_utils.norm.euclideanNorm(dx)
+            vec = self.moving_pts[i] - self.anchored_pts[i]
+            
+            if self.projected:
+                D[i] = vec[0] * self.dir_vec[i, 0] + vec[1] * self.dir_vec[i, 1] + vec[2] * self.dir_vec[i, 2]
+            else:
+                D[i] = geo_utils.norm.euclideanNorm(vec)
+            
+            
             if self.scaled:
                 D[i] /= self.D0[i]
         funcs[self.name] = D
@@ -147,11 +159,34 @@ class DistanceConstraint(GeometricConstraint):
             dDdPt = np.zeros((self.nCon, self.moving_pts.shape[0], self.moving_pts.shape[1]))
 
             for i in range(self.nCon):
-                p1b, _ = geo_utils.eDist_b(self.moving_pts[i, :], self.anchored_pts[i] )
-                
-                if self.scaled:
-                    p1b /= self.D0[i]
-                dDdPt[i, i, :] = p1b
+                if self.projected:
+                    D_b = 1.0
+
+                    # the reverse mode seeds still need to be scaled
+                    if self.scaled:
+                        D_b /= self.D0[i]
+
+                    # d(dot(vec,n))/d(vec) = n
+                    # where vec = thickness vector
+                    #   and  n = the reference direction
+                    #  This is easier to see if you write out the dot product
+                    # dot(vec, n) = vec_1*n_1 + vec_2*n_2 + vec_3*n_3
+                    # d(dot(vec,n))/d(vec_1) = n_1
+                    # d(dot(vec,n))/d(vec_2) = n_2
+                    # d(dot(vec,n))/d(vec_3) = n_3
+                    vec_b = self.dir_vec[i] * D_b
+
+                    # the reverse mode of calculating vec is just scattering the seed of vec_b to the coords
+                    dDdPt[i,  i, :] = vec_b
+
+                else:
+                    p1b, _ = geo_utils.eDist_b(self.moving_pts[i, :], self.anchored_pts[i] )
+                    
+                    if self.scaled:
+                        p1b /= self.D0[i]
+                    dDdPt[i, i, :] = p1b
+            
+           
             
             funcsSens[self.name] = self.DVGeo.totalSensitivity(dDdPt, self.name, config=config)
 
@@ -170,6 +205,24 @@ class DistanceConstraint(GeometricConstraint):
 
         for i in range(len(self.moving_pts)):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+            
+            
+        if self.projected:
+            # create a seperate zone to plot the projected direction for each thickness constraint
+            handle.write("Zone T=%s_ref_directions\n" % self.name)
+            handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.dir_vec) * 2, len(self.dir_vec)))
+            handle.write("DATAPACKING=POINT\n")
+
+            for i in range(self.nCon):
+                pt1 = self.anchored_pts[i]
+                pt2 = pt1 + self.dir_vec[i]
+                handle.write(f"{pt1[0]:f} {pt1[1]:f} {pt1[2]:f}\n")
+                handle.write(f"{pt2[0]:f} {pt2[1]:f} {pt2[2]:f}\n")
+
+            for i in range(self.nCon):
+                handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
+
 
 
 class ProjectedThicknessConstraint(GeometricConstraint):
