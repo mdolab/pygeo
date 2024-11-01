@@ -93,6 +93,14 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.call_counter = 0
 
     def compute(self, inputs, outputs):
+        import time
+        time_now = time.time()
+                
+        if self.comm.rank == 0:
+            print('updating geom:')
+
+
+        
         # check for inputs that have been added but the points have not been added to dvgeo
         for var in inputs.keys():
             # check that the input name matches the convention for points
@@ -114,13 +122,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                     outputs[ptName] = DVGeo.update(ptName).flatten()
             
             file_name = os.path.join(self.options['output_dir'], f"vsp_dvs_{self.call_counter}.des")            
-            DVGeo.createDesignFile(file_name)
+            if self.comm.rank == 0:
+                DVGeo.createDesignFile(file_name)
 
         # compute the DVCon constraint values
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
         file_name = os.path.join(self.options['output_dir'], f"cons_{self.call_counter}.dat")
-        self.DVCon.writeTecplot(file_name)
+        if self.comm.rank == 0:
+            self.DVCon.writeTecplot(file_name)
 
         for constraintname in constraintfunc:
             # if any constraint returned a fail flag throw an error to OpenMDAO
@@ -133,6 +143,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
         self.call_counter += 1
+        
+        if self.comm.rank == 0:
+            print('done updating geom:', time.time() -time_now )
 
     def nom_addChild(self, ffd_file, DVGeoName=None, childName=None):
         # if we have multiple DVGeos use the one specified by name

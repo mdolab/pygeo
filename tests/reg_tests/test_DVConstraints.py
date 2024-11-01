@@ -380,36 +380,53 @@ class RegTestPyGeo(unittest.TestCase):
             ])
             
             anchored_pts = np.array([
-                [0.0, 0.0, -1.0], # this point is outside the FFD, but it shouldn't matter
-                [-0.5, 0.0, 0.0],
-                [0.5, 0.1, 10.0], 
+                [1.0, 0.0, -1.0], # this point is outside the FFD, but it shouldn't matter
+                [-1.5, 0.0, 0.0],
+                [0.5, 1.1, 10.0], 
             ])
             
             DVCon.addDistanceConstraints(anchored_pts, moving_pts, scaled=False)
             DVCon.addDistanceConstraints(anchored_pts, moving_pts, scaled=True)
-            DVCon.writeTecplot('distCon0.dat')
+            DVCon.addDistanceConstraints(anchored_pts, moving_pts, scaled=False, projected=True)
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
-            print('funcs', funcs)
-            DVCon.writeTecplot('distCon1.dat')
 
+            dist_0 = np.array([np.sqrt(2), np.sqrt(1**2 + 2**2), np.sqrt(1**2 + 3**2)])
             # Check that unscaled thicknesses are computed correctly at baseline
             handler.assert_allclose(
-                funcs["DVCon1_distance_constraints_0"], np.arange(1,4), name="distance_0_base", rtol=1e-12, atol=1e-12
+                funcs["DVCon1_distance_constraints_0"], dist_0, name="distance_0_base", rtol=1e-12, atol=1e-12
             )
             handler.assert_allclose(
                 funcs["DVCon1_distance_constraints_1"],  np.ones(len(moving_pts)), name="distance_1_base", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_2"],  dist_0, name="distance_2_base", rtol=1e-12, atol=1e-12
             )
             DVs = DVGeo.getValues()
             DVGeo.setDesignVars({"local_x": 0.5*np.ones_like(DVs["local_x"])})
             funcs = {}
             DVCon.evalFunctions(funcs)
             
+            dist =  np.array([np.sqrt(0.5**2 + 1**2), np.sqrt(1.5**2 + 2**2), np.sqrt(0.5**2 + 1**2 + 3**2)])
+            vec_0 =  moving_pts - anchored_pts
+            moving_pts[:, 0] += 0.5
+
+            vec = moving_pts - anchored_pts
+            
+            dist_projected = np.ones(vec.shape[0])
+            for i in range(3):
+                dist_projected[i] = np.dot(vec[i], vec_0[i]/np.linalg.norm(vec_0[i]))
+            
+            
             handler.assert_allclose(
-                funcs["DVCon1_distance_constraints_0"], np.sqrt(np.arange(1,4)**2 + 0.5**2*np.ones(3)), name="distance_0_altered", rtol=1e-12, atol=1e-12
+                funcs["DVCon1_distance_constraints_0"], dist, name="distance_0_altered", rtol=1e-12, atol=1e-12
             )
             handler.assert_allclose(
-                funcs["DVCon1_distance_constraints_1"], np.sqrt(np.arange(1,4)**2 + 0.5**2*np.ones(3))/np.arange(1,4), name="distance_1_altered", rtol=1e-12, atol=1e-12
+                funcs["DVCon1_distance_constraints_1"], dist/dist_0, name="distance_1_altered", rtol=1e-12, atol=1e-12
             )
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_2"], dist_projected, name="distance_2_altered", rtol=1e-12, atol=1e-12
+            )
+            DVCon.writeTecplot('distCon1.dat')
             
     def test_distance_1D_c172(self, train=True, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_distance_1D_c172.ref")
@@ -418,11 +435,9 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo.addLocalDV("local_x", lower=-0.5, upper=0.5, axis="x", scale=1)
             
             # This line is below the geometry
-            
-            
             anchored_pts = np.array([
-                [0.47, 0.0, 1e-2], 
-                [0.47, 0.0, 5.24], 
+                [0.47, -1, 1e-2], 
+                [0.47, -1, 5.24], 
             ])
             
             anchored_pts_1 = anchored_pts.copy()
@@ -433,9 +448,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addDistanceConstraints1D(anchored_pts, nCon, axis=[0, 1, 0], scaled=False)
             DVCon.addDistanceConstraints1D(anchored_pts_1, nCon, axis=[0, 1, 0], scaled=False)
             
-            DVCon.writeTecplot('distCon0.dat')
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
-            DVCon.writeTecplot('distCon1.dat')
             
 
             # Check that unscaled thicknesses are computed correctly at baseline

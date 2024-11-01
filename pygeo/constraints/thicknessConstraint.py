@@ -153,7 +153,6 @@ class DistanceConstraint(GeometricConstraint):
         funcsSens : dict
             Dictionary to place function values
         """
-
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
             dDdPt = np.zeros((self.nCon, self.moving_pts.shape[0], self.moving_pts.shape[1]))
@@ -180,6 +179,18 @@ class DistanceConstraint(GeometricConstraint):
                     dDdPt[i,  i, :] = vec_b
 
                 else:
+                    # D_b = 1.0
+                    
+                    # D[i] = np.sqrt((vec[0]**2 + vec[1]**2 + vec[2]**2))
+                    
+                    # D_d[i] += 0.5*((vec[0]**2 + vec[1]**2 + vec[2]**2))**(-1/2) * 2*vec0*d_vec0
+                    # D_d[i] += 0.5*((vec[0]**2 + vec[1]**2 + vec[2]**2))**(-1/2) * 2*vec1*d_vec1
+                    # D_d[i] += 0.5*((vec[0]**2 + vec[1]**2 + vec[2]**2))**(-1/2) * 2*vec2*d_vec2
+                    
+                    
+                    # vec = self.moving_pts[i, :] - self.anchored_pts[i] 
+                    # dvec_dmp = 1.0
+                    
                     p1b, _ = geo_utils.eDist_b(self.moving_pts[i, :], self.anchored_pts[i] )
                     
                     if self.scaled:
