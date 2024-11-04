@@ -3958,6 +3958,18 @@ class FilletIntersection(Intersection):
 
                     self.filletComp.surfPts[ii] = self.filletComp.surfPtsOrig[ii] + disp
 
+            elif self.rotate:
+                rotMat = np.zeros((3, 3, len(curvePtCoords)))
+
+                newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
+                curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
+            
+                vOrig = comp.vectorOrig
+                vNew = comp.curvePts - comp.secondCurvePts
+
+                for i in range(len(curvePtCoords)):
+                    rotMat[i] = self._getRotMatrix(vOrig[i], vNew[i])
+
             else:
                 newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
                 curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
@@ -4084,20 +4096,13 @@ class FilletIntersection(Intersection):
         self.compB.updateSurfPts()
         self.DVGeo.update(self.filletComp.surfPtsName)
 
-    def _updateRotation(self):
-        comps = [self.compA, self.compB]
+    def _getRotMatrix(self, vec1, vec2):
+        dot = np.dot(vec1, vec2)
+        theta = np.arccos(dot / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+        vRot = np.cross(vec1, vec2)
 
-        for comp in comps:
-            vOrig = comp.vectorOrig
-            vNew = comp.curvePts - comp.secondCurvePts
+        [wx, wy, wz] = vRot / np.linalg.norm(vRot)
+        w = np.array(((0, -wz, wy), (wz, 0, -wx), (-wy, wx, 0)))
+        rotMat = np.identity(3) + w * np.sin(theta) + np.matmul(w, w) * (1 - np.cos(theta))
 
-            dot = np.dot(vOrig, vNew)
-            theta = np.arccos(dot / (np.norm(vOrig) * np.norm(vNew)))
-            vRot = np.cross(vOrig, vNew)
-
-            [wx, wy, wz] = vRot / np.norm(vRot)
-            w = np.array(((0, -wz, wy), (wz, 0, -wx), (-wy, wx, 0)))
-            R = np.identity(3) + w * np.sin(theta) + np.matmul(w, w) * (1 - np.cos(theta))
-
-            comp.vector = vNew
-            comp.R = R
+        return rotMat
