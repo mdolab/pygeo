@@ -373,12 +373,12 @@ class DVGeometryMulti:
 
         curveFiles assumes you have a dat file or files in the format Pointwise exports or a similar version
         This is either a list of files where each looks like:
-            row 1: header
-            row 2-end: x y z of point on curve
+        - row 1: header
+        - row 2-end: x y z of point on curve
         or a singular file with similar sections for each individual connector:
-            row 1: header specifying how many points are on that connector
-            row 2-that number: x y z of point
-            where this repeats for as many segments make up the connector 
+        - row 1: header specifying how many points are on that connector
+        - row 2-that number: x y z of point
+        - where this repeats for as many segments make up the connector
         """
         if not self.filletIntersection:
             print("no")  # TODO real error
@@ -1308,7 +1308,7 @@ class DVGeometryMulti:
                         if " " not in line:
                             skip = int(line)
 
-                            temp = np.loadtxt(filename, skiprows=begin+1, max_rows=skip)
+                            temp = np.loadtxt(filename, skiprows=begin + 1, max_rows=skip)
                             begin += skip + 1
 
                             curves.append(temp)
@@ -3879,12 +3879,12 @@ class FilletIntersection(Intersection):
 
             # keep this as an intersection point if it is within tolerance
             if dist2ClosestPt < self.distTol:
-                print(f"intersection {surfPt} ind {i} {dist2ClosestPt} away")
+                # print(f"intersection {surfPt} ind {i} {dist2ClosestPt} away")
                 intersectPts.append(surfPt)
                 intersectInd.append(i)
 
         intersectPts = np.asarray(intersectPts, dtype=self.dtype)
-        print(f"min { minSurfCurveDist}")
+        # print(f"min { minSurfCurveDist}")
         return intersectPts, intersectInd, minSurfCurveDist, minSurfCurveDistInd
 
     def addPointSet(self, pts, ptSetName, compMap, comm):
@@ -3898,7 +3898,7 @@ class FilletIntersection(Intersection):
             indices = np.linspace(0, n - 1, n, dtype=int)
             self.indices = indices
             self.firstUpdate = False
-            
+
         else:
             # fillet points on boundaries need updated based on the points embedded in the neighbor FFDs
             if comp is not None:
@@ -4089,6 +4089,15 @@ class FilletIntersection(Intersection):
 
         for comp in comps:
             vOrig = comp.vectorOrig
-            v = comp.curvePts - comp.secondCurvePts
+            vNew = comp.curvePts - comp.secondCurvePts
 
-            comp.vector = v
+            dot = np.dot(vOrig, vNew)
+            theta = np.arccos(dot / (np.norm(vOrig) * np.norm(vNew)))
+            vRot = np.cross(vOrig, vNew)
+
+            [wx, wy, wz] = vRot / np.norm(vRot)
+            w = np.array(((0, -wz, wy), (wz, 0, -wx), (-wy, wx, 0)))
+            R = np.identity(3) + w * np.sin(theta) + np.matmul(w, w) * (1 - np.cos(theta))
+
+            comp.vector = vNew
+            comp.R = R
