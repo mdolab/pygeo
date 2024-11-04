@@ -3847,12 +3847,12 @@ class FilletIntersection(Intersection):
 
             # keep this as an intersection point if it is within tolerance
             if dist2ClosestPt < self.distTol:
-                print(f"intersection {surfPt} ind {i} {dist2ClosestPt} away")
+                # print(f"intersection {surfPt} ind {i} {dist2ClosestPt} away")
                 intersectPts.append(surfPt)
                 intersectInd.append(i)
 
         intersectPts = np.asarray(intersectPts, dtype=self.dtype)
-        print(f"min { minSurfCurveDist}")
+        # print(f"min { minSurfCurveDist}")
         return intersectPts, intersectInd, minSurfCurveDist, minSurfCurveDistInd
 
     def addPointSet(self, pts, ptSetName, compMap, comm):
