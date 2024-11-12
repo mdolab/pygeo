@@ -36,10 +36,10 @@ except ImportError:
 
 # input files for all DVGeo types
 input_path = os.path.dirname(os.path.abspath(__file__))
-outerFFD = os.path.join(input_path, "../../input_files/outerBoxFFD.xyz")
-innerFFD = os.path.join(input_path, "../../input_files/simpleInnerFFD.xyz")
-rectFFD = os.path.join(input_path, "../../input_files/2x1x8_rectangle.xyz")
-espBox = os.path.join(input_path, "../../input_files/esp/box.csm")
+outerFFD = os.path.join(input_path, "..", "..", "input_files", "outerBoxFFD.xyz")
+innerFFD = os.path.join(input_path, "..", "..", "input_files", "simpleInnerFFD.xyz")
+rectFFD = os.path.join(input_path, "..", "..", "input_files", "2x1x8_rectangle.xyz")
+espBox = os.path.join(input_path, "..", "..", "input_files", "esp", "box.csm")
 
 # parameters for FFD-based DVGeo tests
 childName = "childFFD"
@@ -334,7 +334,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals)
+        assert_check_totals(totals, atol=1e-6, rtol=1e-6)
 
     def test_deriv_rev(self):
         self.prob.setup(mode="rev")
@@ -365,8 +365,8 @@ class TestDVConMPhysBox(unittest.TestCase):
         # Update the parameterized constraint keyword arguments with any manually specified ones
         paramKwargs.update(kwargs)
 
-        meshFile = os.path.join(input_path, "../../input_files/2x1x8_rectangle.stl")
-        ffdFile = os.path.join(input_path, "../../input_files/2x1x8_rectangle.xyz")
+        meshFile = os.path.join(input_path, "..", "..", "input_files", "2x1x8_rectangle.stl")
+        ffdFile = os.path.join(input_path, "..", "..", "input_files", "2x1x8_rectangle.xyz")
         xFraction = 0.5
         meshScale = 1.0
 
@@ -552,7 +552,7 @@ class TestDVGeoMPhysESP(unittest.TestCase):
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals)
+        assert_check_totals(totals, atol=1e-6, rtol=1e-6)
 
     def test_deriv_rev(self):
         self.prob.setup(mode="rev")

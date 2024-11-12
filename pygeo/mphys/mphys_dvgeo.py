@@ -201,9 +201,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
+        dMaxGlobal = None
         if isinstance(DVGeo, DVGeometryESP):
             # DVGeoESP can return a value to check the pointset distribution
-            dMax_global = DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+            dMaxGlobal = DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         else:
             DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
@@ -219,8 +220,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             # add an output to the om component
             self.add_output(ptName, distributed=True, val=points.flatten())
 
-        if isinstance(DVGeo, DVGeometryESP):
-            return dMax_global
+        return dMaxGlobal
 
     def nom_add_point_dict(self, point_dict):
         # add every pointset in the dict, and set the ptset name as the key
@@ -1071,14 +1071,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                     # check if this dv is present
                                     if k in d_inputs:
                                         # do the allreduce
-                                        # TODO remove the allreduce when this is fixed in openmdao
-                                        # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
                                         xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
 
                                         # accumulate in the dict
-                                        # TODO
-                                        # because we only do one point set at a time, we always want the 0th
-                                        # entry of this array since dvgeo always behaves like we are passing
-                                        # in multiple objective seeds with totalSensitivity. we can remove the [0]
-                                        # once we move back to totalSensitivityTransProd
                                         d_inputs[k] += xdotg[k][0]

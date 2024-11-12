@@ -285,10 +285,11 @@ def spanX(val, geo):
     geo.restoreCoef(C, axis_key)
 
 
-def getShapeFunc(lidx):
+def getShapeFunc(lidx, direction=None):
     """
     Get shape dictionaries for use with shape function DVs. Common to DVGeometry and MPhys DVGeo tests.
-    Requires local index from DVGeo object and returns shapes.
+    Requires local index from DVGeo object and optionally a three-element numpy array for the
+    positive direction vector and returns shapes.
     """
     shape_1 = {}
     shape_2 = {}
@@ -296,6 +297,11 @@ def getShapeFunc(lidx):
     k_center = 2
     i_center = 1
     n_chord = lidx.shape[0]
+
+    d_up = np.array([0.0, 1.0, 0.0])
+    if direction is not None:
+        d_up = direction
+        d_up /= np.linalg.norm(d_up)
 
     for kk in [-1, 0, 1]:
         if kk == 0:
@@ -314,24 +320,16 @@ def getShapeFunc(lidx):
                 # we are behind the center point
                 i_weight = (n_chord - ii - 1) / (n_chord - i_center - 1)
 
-            # get the direction vectors with unit length
-            dir_up = np.array([0.0, 1.0, 0.0])
-            # dir down can also be defined as an upwards pointing vector. Then, the DV itself
-            # getting a negative value means the surface would move down etc. For now, we define
-            # the vector as its pointing down, so a positive DV value moves the surface down.
-            dir_down = np.array([0.0, -1.0, 0.0])
-
-            # scale them by the i and k weights
-            dir_up *= k_weight * i_weight
-            dir_down *= k_weight * i_weight
+            # scale direction by the i and k weights
+            d_up_scaled = d_up * k_weight * i_weight
 
             # get this point's global index and add to the dictionary with the direction vector.
             gidx_up = lidx[ii, 1, kk + k_center]
             gidx_down = lidx[ii, 0, kk + k_center]
 
-            shape_1[gidx_up] = dir_up
+            shape_1[gidx_up] = d_up_scaled
             # the lower face is perturbed with a separate dictionary
-            shape_2[gidx_down] = dir_down
+            shape_2[gidx_down] = -d_up_scaled
 
     shapes = [shape_1, shape_2]
     return shapes
