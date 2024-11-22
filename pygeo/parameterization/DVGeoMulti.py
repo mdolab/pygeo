@@ -244,7 +244,8 @@ class DVGeometryMulti:
         excludeSurfaces=None,
         remeshBwd=True,
         anisotropy=[1.0, 1.0, 1.0],
-        tangency=True,
+        tangency=False,
+        rotate=False,
     ):
         """
         Method that defines intersections between components.
@@ -327,7 +328,7 @@ class DVGeometryMulti:
             if filletComp is None:
                 print("no")
 
-            inter = FilletIntersection(compA, compB, filletComp, distTol, self, self.dtype, tangency)
+            inter = FilletIntersection(compA, compB, filletComp, distTol, self, self.dtype, tangency, rotate)
 
         # initialize a standard intersection object
         else:
@@ -413,9 +414,8 @@ class DVGeometryMulti:
             comp.curvePtsOrig = deepcopy(curvePts)
 
         # add the curve pointset to the component's DVGeo
-        comp.DVGeo.addPointSet(
-            curvePts, ptSetName, origConfig=origConfig, coordXfer=coordXfer
-        )  # TODO is comm right here
+        comp.DVGeo.addPointSet(curvePts, ptSetName, origConfig=origConfig, coordXfer=coordXfer)
+        # TODO is comm right here
 
         # add the curve pointset to DVGeoMulti
         self.points[ptSetName] = PointSet(curvePts, comm=self.comm, comp=compName)
@@ -582,8 +582,8 @@ class DVGeometryMulti:
                     # print(f"\nrank {self.comm.rank} total compBInterInd {compBInterPts}")
 
                     # add those intersection points to each DVGeo so they get deformed with the FFD
-                    compAPtsName = f"{IC.compA.name}_fillet_intersection"
-                    compBPtsName = f"{IC.compB.name}_fillet_intersection"
+                    compAPtsName = f"{IC.compA.name}_fillet_intersection_main"
+                    compBPtsName = f"{IC.compB.name}_fillet_intersection_main"
 
                     # print(f"\nrank {self.comm.rank} compAInterPts {compAInterPts}")
                     # print(f"\nrank {self.comm.rank} compBInterPts {compAInterPts}")
@@ -611,6 +611,59 @@ class DVGeometryMulti:
                     for IC in self.intersectComps:
                         IC.addPointSet(compAInterPts, compAPtsName, [], comm)
                         IC.addPointSet(compBInterPts, compBPtsName, [], comm)
+
+                    # secondary curve
+                    compAPtsName_sec = f"{IC.compA.name}_fillet_intersection_sec"
+                    compBPtsName_sec = f"{IC.compB.name}_fillet_intersection_sec"
+                    IC.filletComp.compAPtsName_sec = compAPtsName_sec
+                    IC.filletComp.compBPtsName_sec = compBPtsName_sec
+
+                    if IC.rotate:
+                        # find points that match the secondary curve
+                        (
+                            compAInterPtsLocal_sec,
+                            compAInterIndLocal_sec,
+                            compACurvePtDistLocal_sec,
+                            compACurveIndLocal_sec,
+                        ) = IC.findIntersection(points, IC.compA.secondCurvePts)
+                        (
+                            compBInterPtsLocal_sec,
+                            compBInterIndLocal_sec,
+                            compBCurvePtDistLocal_sec,
+                            compBCurveIndLocal_sec,
+                        ) = IC.findIntersection(points, IC.compB.secondCurvePts)
+
+                        _, _, compAInterPts_sec, compAInterInd_sec = IC._commCurveProj(
+                            compAInterPtsLocal_sec, compAInterIndLocal_sec, self.comm
+                        )
+                        _, _, compBInterPts_sec, compBInterInd_sec = IC._commCurveProj(
+                            compBInterPtsLocal_sec, compBInterIndLocal_sec, self.comm
+                        )
+
+                        _, _, compACurvePtDist_sec, _ = IC._commCurveProj(
+                            compACurvePtDistLocal_sec, compACurveIndLocal_sec, self.comm, reshape=False
+                        )
+                        _, _, compBCurvePtDist_sec, _ = IC._commCurveProj(
+                            compBCurvePtDistLocal_sec, compBCurveIndLocal_sec, self.comm, reshape=False
+                        )
+
+                        compAInterPts_sec.dtype = self.dtype
+                        compBInterPts_sec.dtype = self.dtype
+
+                        IC.filletComp.compAInterInd_sec = compAInterInd_sec
+                        IC.filletComp.compBInterInd_sec = compBInterInd_sec
+
+                        IC.filletComp.compACurvePtDist_sec = compACurvePtDist_sec
+                        IC.filletComp.compBCurvePtDist_sec = compBCurvePtDist_sec
+
+                        IC.compA.DVGeo.addPointSet(compAInterPts_sec, compAPtsName_sec)
+                        IC.compB.DVGeo.addPointSet(compBInterPts_sec, compBPtsName_sec)
+
+                        self.points[compAPtsName_sec] = PointSet(compAInterPts_sec, comm=comm, comp=IC.compA.name)
+                        self.points[compBPtsName_sec] = PointSet(compBInterPts_sec, comm=comm, comp=IC.compB.name)
+
+                        IC.addPointSet(compAInterPts_sec, compAPtsName_sec, [], comm)
+                        IC.addPointSet(compBInterPts_sec, compBPtsName_sec, [], comm)
 
         # non-fillet intersections require more checking
         else:
@@ -1428,29 +1481,38 @@ class Comp:
         else:
             self.surfPts = self.DVGeo.update(self.surfPtsName).copy()
             self.curvePts = self.DVGeo.update(self.curvePtsName).copy()
+            self.secondCurvePts = self.DVGeo.update(self.secondCurvePtsName).copy()
 
     def writeSurf(self, fileName):
         fileName = f"{fileName}_{self.name}_surf.dat"
         f = openTecplot(fileName, 3)
-        writeTecplot1D(f, self.name, self.surfPts)
+        writeTecplot1D(f, f"{self.name}Surf", self.surfPts)
         closeTecplot(f)
 
     def writeCurve(self, fileName, secondary):
         if secondary:
             curveName = self.secondCurvePtsName
             curvePts = self.secondCurvePts
+            tag = "2nd"
+
+            if self.isFillet:
+                ind = [self.compAInterInd_sec, self.compBInterInd_sec]
         else:
             curveName = self.curvePtsName
             curvePts = self.curvePts
+            tag = "1st"
+
+            if self.isFillet:
+                ind = [self.compAInterInd, self.compBInterInd]
 
         fileName = f"{fileName}_{curveName}.dat"
         f = openTecplot(fileName, 3)
 
         if self.isFillet:
-            writeTecplot1D(f, self.name, self.surfPts[self.compAInterInd])
-            writeTecplot1D(f, self.name, self.surfPts[self.compBInterInd])
+            writeTecplot1D(f, f"{self.name}Curve{tag}_CompA", self.surfPts[ind[0]])
+            writeTecplot1D(f, f"{self.name}Curve{tag}_CompB", self.surfPts[ind[1]])
         else:
-            writeTecplot1D(f, self.name, curvePts)
+            writeTecplot1D(f, f"{self.name}Curve{tag}", curvePts)
 
         closeTecplot(f)
 
@@ -1459,6 +1521,10 @@ class Comp:
         if ptSetName == self.compAPtsName:
             newPts[self.compAInterInd] = newInterPts
         elif ptSetName == self.compBPtsName:
+            newPts[self.compBInterInd] = newInterPts
+        elif ptSetName == self.compAPtsName_sec:
+            newPts[self.compAInterInd] = newInterPts
+        elif ptSetName == self.compBPtsName_sec:
             newPts[self.compBInterInd] = newInterPts
         else:
             print("no")
@@ -3847,13 +3913,14 @@ class CompIntersection(Intersection):
 
 
 class FilletIntersection(Intersection):
-    def __init__(self, compA, compB, filletComp, distTol, DVGeo, dtype, tangency, project=True):
+    def __init__(self, compA, compB, filletComp, distTol, DVGeo, dtype, tangency, rotate, project=True):
         super().__init__(compA, compB, distTol, DVGeo, project, dtype)
 
         self.filletComp = DVGeo.comps[filletComp]
         self.compA.intersection = self.compB.intersection = self.filletComp.intersection = self
         self.firstUpdate = True
         self.tangency = tangency
+        self.rotate = rotate
 
         # dict to keep track of the total number of points on each curve
         # self.nCurvePts = {}
@@ -3904,7 +3971,12 @@ class FilletIntersection(Intersection):
             if comp is not None:
                 if not comp.isFillet:
                     fillet = self.filletComp
-                    if ptSetName is fillet.compAPtsName or ptSetName is fillet.compBPtsName:
+                    if (
+                        ptSetName is fillet.compAPtsName
+                        or ptSetName is fillet.compBPtsName
+                        or ptSetName is fillet.compAPtsName_sec
+                        or ptSetName is fillet.compBPtsName_sec
+                    ):
                         points = self.points[ptSetName].points
                         fillet.updateFilletPts(points, ptSetName)
 
@@ -3959,16 +4031,37 @@ class FilletIntersection(Intersection):
                     self.filletComp.surfPts[ii] = self.filletComp.surfPtsOrig[ii] + disp
 
             elif self.rotate:
-                rotMat = np.zeros((3, 3, len(curvePtCoords)))
+                nFilPts = len(self.filletComp.surfPtsOrig)
 
                 newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
                 curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
-            
-                vOrig = comp.vectorOrig
-                vNew = comp.curvePts - comp.secondCurvePts
+                curvePtCoords2 = np.vstack((self.compA.secondCurvePts, self.compB.secondCurvePts))
+
+                rotMat = np.zeros((len(curvePtCoords), 3, 3))
+
+                vOrig = np.vstack((self.compA.vectorOrig, self.compB.vectorOrig))
+                vNew = newCurveCoords - curvePtCoords2
+
+                delta = np.zeros((len(curvePtCoords), 3))
 
                 for i in range(len(curvePtCoords)):
                     rotMat[i] = self._getRotMatrix(vOrig[i], vNew[i])
+
+                for i in range(nFilPts):
+                    xf = self.filletComp.surfPtsOrig[i]
+                    for j in range(len(curvePtCoords)):
+                        Mj = rotMat[j]
+                        xcj = curvePtCoords[j]
+                        delta[j] += np.matmul(Mj, xf) + xcj - np.matmul(Mj, xcj) - xf
+
+                delta *= 10e-8
+
+                ptsNew = self.filletComp.surfPtsOrig.copy()
+                pts0 = self.filletComp.surfPtsOrig
+
+                # warp interior fillet points
+                self._warpSurfPts(pts0, ptsNew, self.indices, curvePtCoords, delta, update=True)
+                self.filletComp.surfPts = ptsNew
 
             else:
                 newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
@@ -4096,12 +4189,18 @@ class FilletIntersection(Intersection):
         self.compB.updateSurfPts()
         self.DVGeo.update(self.filletComp.surfPtsName)
 
-    def _getRotMatrix(self, vec1, vec2):
-        dot = np.dot(vec1, vec2)
-        theta = np.arccos(dot / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
-        vRot = np.cross(vec1, vec2)
+    def _getRotMatrix(self, vec1List, vec2List):
+        # vec1List = np.atleast_3d(vec1List)
+        # vec2List = np.atleast_3d(vec2List)
+        # dot = np.sum(vec1List * vec2List, axis=0)  # check: with one vector in each this matches normal np.dot
+        # theta = np.arccos(dot / (np.linalg.norm(vec1List) * np.linalg.norm(vec2List)))
+        # vRot = np.cross(vec1List[:, None, :], vec2List[None, :, :])
 
-        [wx, wy, wz] = vRot / np.linalg.norm(vRot)
+        dot = np.dot(vec1List, vec2List)
+        theta = np.arccos(dot / (np.linalg.norm(vec1List) * np.linalg.norm(vec2List)))
+        vRot = np.cross(vec1List, vec2List)
+
+        [wx, wy, wz] = vRot / (np.linalg.norm(vRot) + 1e-8)  # get 0 back instead of NAN if there's no change
         w = np.array(((0, -wz, wy), (wz, 0, -wx), (-wy, wx, 0)))
         rotMat = np.identity(3) + w * np.sin(theta) + np.matmul(w, w) * (1 - np.cos(theta))
 
