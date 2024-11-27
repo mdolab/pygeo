@@ -1596,6 +1596,45 @@ class Intersection:
             else:
                 ptsNew[j] = interp
 
+    def _warpSurfPts2(self, pts0, ptsNew, indices, curvePtCoords, delta, update=True):
+        """
+        This function warps points using the displacements from curve projections.
+
+        pts0: The original surface point coordinates.
+        ptsNew: Updated surface pt coordinates. We will add the warped delta to these inplace.
+        indices: Indices of the points that we will use for this operation.
+        curvePtCoords: Original coordinates of points on curves.
+        delta: Displacements of the points on curves after projecting them.
+        update: Whether to update the coordinates in place. If not, ptsNew will just be the displacements
+
+        """
+
+        # Return if curvePtCoords is empty
+        if not np.any(curvePtCoords):
+            return
+
+        for j in indices:
+            # point coordinates with the baseline design
+            # this is the point we will warp
+            ptCoords = pts0[j]
+            s0 = delta[j, :, :]
+
+            # Vectorized point-based warping
+            rr = ptCoords - curvePtCoords
+            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+            LdefoDist3 = LdefoDist**3
+            Wi = LdefoDist3
+            den = np.sum(Wi)
+            interp = np.zeros(3, dtype=self.dtype)
+            for iDim in range(3):
+                interp[iDim] = np.sum(Wi * s0[:, iDim]) / den
+
+            if update:
+                # finally, update the coord in place
+                ptsNew[j] = ptsNew[j] + interp
+            else:
+                ptsNew[j] = interp
+
     def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
         # seeds for delta
         deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3), dtype=self.dtype)
@@ -4005,18 +4044,23 @@ class FilletIntersection(Intersection):
                     self.filletComp.surfPts[ii] = self.filletComp.surfPtsOrig[ii] + disp
 
             elif self.rotate:
-                nFilPts = len(self.filletComp.surfPtsOrig)
-
                 newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
                 curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
+
+                nFilPts = len(self.filletComp.surfPtsOrig)
+                nIntPts = len(curvePtCoords)
 
                 offsetPtCoordsX = np.vstack((self.compA.offsetPtsX, self.compB.offsetPtsX))
                 offsetPtCoordsY = np.vstack((self.compA.offsetPtsY, self.compB.offsetPtsY))
                 offsetPtCoordsZ = np.vstack((self.compA.offsetPtsZ, self.compB.offsetPtsZ))
 
-                rotMatX = np.zeros((len(curvePtCoords), 3, 3))
-                rotMatY = np.zeros((len(curvePtCoords), 3, 3))
-                rotMatZ = np.zeros((len(curvePtCoords), 3, 3))
+                rotMatX = np.zeros((nIntPts, 3, 3))
+                rotMatY = np.zeros((nIntPts, 3, 3))
+                rotMatZ = np.zeros((nIntPts, 3, 3))
+
+                bX = np.zeros((nIntPts, 3))
+                bY = np.zeros((nIntPts, 3))
+                bZ = np.zeros((nIntPts, 3))
 
                 vecOrigX = np.vstack((self.compA.vecOrigX, self.compB.vecOrigX))
                 vecOrigY = np.vstack((self.compA.vecOrigY, self.compB.vecOrigY))
@@ -4026,28 +4070,34 @@ class FilletIntersection(Intersection):
                 vecNewY = newCurveCoords - offsetPtCoordsY
                 vecNewZ = newCurveCoords - offsetPtCoordsZ
 
-                deltaX = np.zeros((len(curvePtCoords), 3))
-                deltaY = np.zeros((len(curvePtCoords), 3))
-                deltaZ = np.zeros((len(curvePtCoords), 3))
+                deltaX = np.zeros((nFilPts, nIntPts, 3))
+                deltaY = np.zeros((nFilPts, nIntPts, 3))
+                deltaZ = np.zeros((nFilPts, nIntPts, 3))
 
-                for i in range(len(curvePtCoords)):
+                for i in range(nIntPts):
                     rotMatX[i] = self._getRotMatrix(vecOrigX[i], vecNewX[i])
                     rotMatY[i] = self._getRotMatrix(vecOrigY[i], vecNewY[i])
                     rotMatZ[i] = self._getRotMatrix(vecOrigZ[i], vecNewZ[i])
 
+                    bX[i] = newCurveCoords[i] - np.dot(rotMatX[i], curvePtCoords[i])
+                    bY[i] = newCurveCoords[i] - np.dot(rotMatY[i], curvePtCoords[i])
+                    bZ[i] = newCurveCoords[i] - np.dot(rotMatZ[i], curvePtCoords[i])
+
                 for i in range(nFilPts):
                     xf = self.filletComp.surfPtsOrig[i]
 
-                    for j in range(len(curvePtCoords)):
-                        Mj = rotMat[j]
-                        xcj = curvePtCoords[j]
-                        delta[j] += np.matmul(Mj, xf) + xcj - np.matmul(Mj, xcj) - xf
+                    for j in range(nIntPts):
+                        deltaX[i, j, :] = np.matmul(rotMatX[j], xf) + bX[j] - xf
+                        deltaY[i, j, :] = np.matmul(rotMatY[j], xf) + bY[j] - xf
+                        deltaZ[i, j, :] = np.matmul(rotMatZ[j], xf) + bZ[j] - xf
+
+                delta = deltaX + deltaY + deltaZ
 
                 ptsNew = self.filletComp.surfPtsOrig.copy()
                 pts0 = self.filletComp.surfPtsOrig
 
                 # warp interior fillet points
-                self._warpSurfPts(pts0, ptsNew, self.indices, curvePtCoords, delta, update=True)
+                self._warpSurfPts2(pts0, ptsNew, self.indices, curvePtCoords, delta, update=True)
                 self.filletComp.surfPts = ptsNew
 
             else:
