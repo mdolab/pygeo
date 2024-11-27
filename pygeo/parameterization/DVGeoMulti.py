@@ -1617,6 +1617,45 @@ class Intersection:
             else:
                 ptsNew[j] = interp
 
+    def _warpSurfPts2(self, pts0, ptsNew, indices, curvePtCoords, delta, update=True):
+        """
+        This function warps points using the displacements from curve projections.
+
+        pts0: The original surface point coordinates.
+        ptsNew: Updated surface pt coordinates. We will add the warped delta to these inplace.
+        indices: Indices of the points that we will use for this operation.
+        curvePtCoords: Original coordinates of points on curves.
+        delta: Displacements of the points on curves after projecting them.
+        update: Whether to update the coordinates in place. If not, ptsNew will just be the displacements
+
+        """
+
+        # Return if curvePtCoords is empty
+        if not np.any(curvePtCoords):
+            return
+
+        for j in indices:
+            # point coordinates with the baseline design
+            # this is the point we will warp
+            ptCoords = pts0[j]
+            s0 = delta[j, :, :]
+
+            # Vectorized point-based warping
+            rr = ptCoords - curvePtCoords
+            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+            LdefoDist3 = LdefoDist**3
+            Wi = LdefoDist3
+            den = np.sum(Wi)
+            interp = np.zeros(3, dtype=self.dtype)
+            for iDim in range(3):
+                interp[iDim] = np.sum(Wi * s0[:, iDim]) / den
+
+            if update:
+                # finally, update the coord in place
+                ptsNew[j] = ptsNew[j] + interp
+            else:
+                ptsNew[j] = interp
+
     def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
         # seeds for delta
         deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3), dtype=self.dtype)
@@ -4031,36 +4070,36 @@ class FilletIntersection(Intersection):
                     self.filletComp.surfPts[ii] = self.filletComp.surfPtsOrig[ii] + disp
 
             elif self.rotate:
-                nFilPts = len(self.filletComp.surfPtsOrig)
-
                 newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
                 curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
                 curvePtCoords2 = np.vstack((self.compA.secondCurvePts, self.compB.secondCurvePts))
 
-                rotMat = np.zeros((len(curvePtCoords), 3, 3))
+                nFilPts = len(self.filletComp.surfPtsOrig)
+                nIntPts = len(curvePtCoords)
 
                 vOrig = np.vstack((self.compA.vectorOrig, self.compB.vectorOrig))
                 vNew = newCurveCoords - curvePtCoords2
 
-                delta = np.zeros((len(curvePtCoords), 3))
+                rotMat = np.zeros((nIntPts, 3, 3))
+                b = np.zeros((nIntPts, 3))
 
-                for i in range(len(curvePtCoords)):
+                for i in range(nIntPts):
                     rotMat[i] = self._getRotMatrix(vOrig[i], vNew[i])
+                    b[i] = newCurveCoords[i] - np.dot(rotMat[i], curvePtCoords[i])
+
+                delta = np.zeros((nFilPts, nIntPts, 3))
 
                 for i in range(nFilPts):
                     xf = self.filletComp.surfPtsOrig[i]
-                    for j in range(len(curvePtCoords)):
-                        Mj = rotMat[j]
-                        xcj = curvePtCoords[j]
-                        delta[j] += np.matmul(Mj, xf) + xcj - np.matmul(Mj, xcj) - xf
 
-                delta *= 10e-8
+                    for j in range(nIntPts):
+                        delta[i, j, :] = np.matmul(rotMat[j], xf) + b[j] - xf
 
                 ptsNew = self.filletComp.surfPtsOrig.copy()
                 pts0 = self.filletComp.surfPtsOrig
 
                 # warp interior fillet points
-                self._warpSurfPts(pts0, ptsNew, self.indices, curvePtCoords, delta, update=True)
+                self._warpSurfPts2(pts0, ptsNew, self.indices, curvePtCoords, delta, update=True)
                 self.filletComp.surfPts = ptsNew
 
             else:
