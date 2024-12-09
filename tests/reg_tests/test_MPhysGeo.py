@@ -17,7 +17,7 @@ from pygeo.mphys import OM_DVGEOCOMP
 try:
     # External modules
     from openmdao.api import Group, IndepVarComp, Problem
-    from openmdao.utils.assert_utils import assert_check_totals, assert_near_equal
+    from openmdao.utils.assert_utils import assert_near_equal
 
     omInstalled = True
 
@@ -32,6 +32,34 @@ try:
 
 except ImportError:
     ocsmInstalled = False
+
+
+def assert_check_totals(totals, atol, rtol):
+    """
+    Check the totals dictionary for the forward and reverse mode derivatives.
+
+    This is better than OpenMDAO's `assert_check_totals` because it uses numpy's `assert_allclose` which eliminates the
+    issue of huge relative errors when comparing very small values.
+    """
+    for key in totals:
+        derivs = totals[key]
+        ref = derivs["J_fd"]
+        if "J_fwd" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_fwd"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Forward derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
+        if "J_rev" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_rev"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Reverse derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
 
 
 # input files for all DVGeo types
