@@ -34,7 +34,7 @@ except ImportError:
     ocsmInstalled = False
 
 
-def assert_check_totals(totals, atol, rtol):
+def assert_check_totals(totals, atol=1e-6, rtol=1e-6):
     """
     Check the totals dictionary for the forward and reverse mode derivatives.
 
