@@ -34,34 +34,6 @@ except ImportError:
     ocsmInstalled = False
 
 
-def assert_check_totals(totals, atol=1e-6, rtol=1e-6):
-    """
-    Check the totals dictionary for the forward and reverse mode derivatives.
-
-    This is better than OpenMDAO's `assert_check_totals` because it uses numpy's `assert_allclose` which eliminates the
-    issue of huge relative errors when comparing very small values.
-    """
-    for key in totals:
-        derivs = totals[key]
-        ref = derivs["J_fd"]
-        if "J_fwd" in derivs:
-            np.testing.assert_allclose(
-                derivs["J_fwd"],
-                ref,
-                atol=atol,
-                rtol=rtol,
-                err_msg=f"Forward derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
-            )
-        if "J_rev" in derivs:
-            np.testing.assert_allclose(
-                derivs["J_rev"],
-                ref,
-                atol=atol,
-                rtol=rtol,
-                err_msg=f"Reverse derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
-            )
-
-
 # input files for all DVGeo types
 input_path = os.path.dirname(os.path.abspath(__file__))
 outerFFD = os.path.join(input_path, "..", "..", "input_files", "outerBoxFFD.xyz")
@@ -362,14 +334,14 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals, atol=1e-6, rtol=1e-6)
+        commonUtils.assert_check_totals(totals, atol=1e-6, rtol=1e-6)
 
     def test_deriv_rev(self):
         self.prob.setup(mode="rev")
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-5, out_stream=None)
-        assert_check_totals(totals, atol=1e-5, rtol=1e-5)
+        commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-5)
 
 
 @unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
@@ -464,7 +436,7 @@ class TestDVConMPhysBox(unittest.TestCase):
         p.run_model()
 
         totals = p.check_totals(step=1e-6, out_stream=None)
-        assert_check_totals(totals, atol=1e-5, rtol=1e-4)
+        commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-4)
 
     def test_deformed_derivs_rev(self):
         """
@@ -485,7 +457,7 @@ class TestDVConMPhysBox(unittest.TestCase):
         p.run_model()
 
         totals = p.check_totals(step=1e-5, out_stream=None)
-        assert_check_totals(totals, atol=5e-5, rtol=5e-5)
+        commonUtils.assert_check_totals(totals, atol=5e-5, rtol=5e-5)
 
 
 # parameters for ESP-based DVGeo tests
@@ -580,14 +552,14 @@ class TestDVGeoMPhysESP(unittest.TestCase):
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals, atol=1e-6, rtol=1e-6)
+        commonUtils.assert_check_totals(totals, atol=1e-6, rtol=1e-6)
 
     def test_deriv_rev(self):
         self.prob.setup(mode="rev")
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-5, out_stream=None)
-        assert_check_totals(totals, atol=1e-5, rtol=1e-5)
+        commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-5)
 
 
 if __name__ == "__main__":
