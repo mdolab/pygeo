@@ -245,7 +245,7 @@ class DVGeometryMulti:
         remeshBwd=True,
         anisotropy=[1.0, 1.0, 1.0],
         tangency=False,
-        rotate=False,
+        rotate=None,
     ):
         """
         Method that defines intersections between components.
@@ -4076,7 +4076,7 @@ class FilletIntersection(Intersection):
 
                     self.filletComp.surfPts[ii] = self.filletComp.surfPtsOrig[ii] + disp
 
-            elif self.rotate:
+            elif self.rotate is not None:
                 newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
                 curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
 
@@ -4123,21 +4123,20 @@ class FilletIntersection(Intersection):
                         Mjy = rotMatY[j]
                         Mjz = rotMatZ[j]
 
-                        deltaX[i, j, :] = (
-                            xcj
-                            - xf0
-                            + np.dot(Mjx, xf0)
-                            # + np.dot(Mjy, xf0)
-                            # + np.dot(Mjz, xf0)
-                            - np.dot(Mjx, xc0)
-                            # - np.dot(Mjy, xc0)
-                            # - np.dot(Mjz, xc0)
-                        )
+                        deltaX[i, j, :] = xcj - xf0 + np.dot(Mjx, xf0) - np.dot(Mjx, xc0)
                         deltaY[i, j, :] = xcj - xf0 + np.dot(Mjy, xf0) - np.dot(Mjy, xc0)
                         deltaZ[i, j, :] = xcj - xf0 + np.dot(Mjz, xf0) - np.dot(Mjz, xc0)
 
                 # delta = np.mean((deltaX, deltaY, deltaZ), axis=0)
-                delta = deltaX
+                rotate = self.rotate.lower()
+                if rotate == "x":
+                    delta = deltaX
+                elif rotate == "y":
+                    delta = deltaY
+                elif rotate == "z":
+                    delta = deltaZ
+                else:
+                    print("no!")
 
                 ptsNew = self.filletComp.surfPtsOrig.copy()
                 pts0 = self.filletComp.surfPtsOrig
