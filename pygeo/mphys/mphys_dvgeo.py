@@ -468,7 +468,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # add the DV to DVGeo
         nVal = DVGeo.addLocalSectionDV(
-            dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
+            dvName=dvName,
+            secIndex=secIndex,
+            axis=axis,
+            pointSelect=pointSelect,
+            volList=volList,
+            orient0=orient0,
+            orient2=orient2,
+            config=config,
+            prependName=False,
         )
 
         # define the input
