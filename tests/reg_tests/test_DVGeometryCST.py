@@ -323,7 +323,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 @parameterized_class(airfoils)
 class DVGeometryCSTPointSetParallel(unittest.TestCase):
     # Test in parallel
-    N_PROCS = 4
+    numPhysicalCores = os.cpu_count() // 2
+    N_PROCS = int(numpy.clip(numPhysicalCores, 2, 16))
 
     def setUp(self):
         self.datFile = os.path.join(inputDir, self.fName)

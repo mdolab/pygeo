@@ -33,7 +33,9 @@ if mpiInstalled:
         ocsmInstalled = False
 
 
-test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "parallel_4procs"}]
+numPhysicalCores = os.cpu_count() // 2
+N_PROCS_CUR = int(numpy.clip(numPhysicalCores, 2, 16))
+test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": N_PROCS_CUR, "name": "parallel_4procs"}]
 
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
@@ -387,7 +389,8 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
-    N_PROCS = 3
+    numPhysicalCores = os.cpu_count() // 2
+    N_PROCS = int(numpy.clip(numPhysicalCores, 2, 16))
 
     def setUp(self):
         # Store the path where this current script lives
@@ -585,7 +588,8 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
-    N_PROCS = 4
+    numPhysicalCores = os.cpu_count() // 2
+    N_PROCS = int(numpy.clip(numPhysicalCores, 2, 16))
 
     def setUp(self):
         # Store the path where this current script lives
