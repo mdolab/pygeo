@@ -29,7 +29,7 @@ inputDir = os.path.join(baseDir, "../../input_files")
 
 # Run the boxes test in series and in parallel
 numPhysicalCores = os.cpu_count() // 2
-N_PROCS_CUR = int(numpy.clip(numPhysicalCores, 2, 16))
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
 test_params = [
     {
         "name": "one_proc",
