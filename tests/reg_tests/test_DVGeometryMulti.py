@@ -3,12 +3,12 @@ import os
 import unittest
 
 # External modules
-import psutil
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
+import psutil
 
 # First party modules
 from pygeo import DVGeometry

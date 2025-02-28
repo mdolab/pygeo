@@ -6,11 +6,11 @@ import time
 import unittest
 
 # External modules
-import psutil
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
 import numpy as np
 from parameterized import parameterized_class
+import psutil
 from stl import mesh
 
 try:
