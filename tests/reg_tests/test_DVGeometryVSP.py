@@ -5,6 +5,7 @@ import os
 import unittest
 
 # External modules
+import psutil
 from baseclasses import BaseRegTest
 from mpi4py import MPI
 import numpy as np
@@ -22,8 +23,8 @@ if openvspInstalled:
     # First party modules
     from pygeo import DVGeometryVSP
 
-numPhysicalCores = os.cpu_count() // 2
-N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
+numPhysicalCores = psutil.cpu_count(logical=False)
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 1, 16))
 test_params = [
     # # Tutorial scalar JST
     {"N_PROCS": 1, "name": "serial"},

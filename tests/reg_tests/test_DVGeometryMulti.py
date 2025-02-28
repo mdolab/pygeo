@@ -3,6 +3,7 @@ import os
 import unittest
 
 # External modules
+import psutil
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
 from mpi4py import MPI
@@ -28,8 +29,8 @@ baseDir = os.path.dirname(os.path.abspath(__file__))
 inputDir = os.path.join(baseDir, "../../input_files")
 
 # Run the boxes test in series and in parallel
-numPhysicalCores = os.cpu_count() // 2
-N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
+numPhysicalCores = psutil.cpu_count(logical=False)
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 1, 16))
 test_params = [
     {
         "name": "one_proc",

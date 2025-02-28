@@ -9,6 +9,7 @@ import os
 import unittest
 
 # External modules
+import psutil
 from baseclasses import BaseRegTest
 from mpi4py import MPI
 import numpy as np
@@ -323,8 +324,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 @parameterized_class(airfoils)
 class DVGeometryCSTPointSetParallel(unittest.TestCase):
     # Test in parallel
-    numPhysicalCores = os.cpu_count() // 2
-    N_PROCS = int(np.clip(numPhysicalCores, 2, 16))
+    numPhysicalCores = psutil.cpu_count(logical=False)
+    N_PROCS = int(np.clip(numPhysicalCores, 1, 16))
 
     def setUp(self):
         self.datFile = os.path.join(inputDir, self.fName)
