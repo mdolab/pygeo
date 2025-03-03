@@ -8,6 +8,35 @@ from pyspline import Curve
 # First party modules
 from pygeo import DVGeometry, DVGeometryAxi
 
+
+def assert_check_totals(totals, atol=1e-6, rtol=1e-6):
+    """
+    Check the totals dictionary for the forward and reverse mode derivatives.
+
+    This is better than OpenMDAO's `assert_check_totals` because it uses numpy's `assert_allclose` which eliminates the
+    issue of huge relative errors when comparing very small values.
+    """
+    for key in totals:
+        derivs = totals[key]
+        ref = derivs["J_fd"]
+        if "J_fwd" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_fwd"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Forward derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
+        if "J_rev" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_rev"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Reverse derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
+
+
 ##################
 # DVGeometry Tests
 ##################

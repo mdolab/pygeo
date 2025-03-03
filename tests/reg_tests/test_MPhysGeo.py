@@ -362,14 +362,14 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals, atol=1e-6, rtol=1e-6)
+        commonUtils.assert_check_totals(totals, atol=1e-6, rtol=1e-6)
 
     def test_deriv_rev(self):
         self.prob.setup(mode="rev")
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-5, out_stream=None)
-        assert_check_totals(totals, atol=1e-5, rtol=1e-5)
+        commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-5)
 
 
 @unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
@@ -464,7 +464,7 @@ class TestDVConMPhysBox(unittest.TestCase):
         p.run_model()
 
         totals = p.check_totals(step=1e-6, out_stream=None)
-        assert_check_totals(totals, atol=1e-5, rtol=1e-4)
+        commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-4)
 
     def test_deformed_derivs_rev(self):
         """
@@ -485,7 +485,7 @@ class TestDVConMPhysBox(unittest.TestCase):
         p.run_model()
 
         totals = p.check_totals(step=1e-5, out_stream=None)
-        assert_check_totals(totals, atol=5e-5, rtol=5e-5)
+        commonUtils.assert_check_totals(totals, atol=5e-5, rtol=5e-5)
 
 
 # parameters for ESP-based DVGeo tests
@@ -580,14 +580,14 @@ class TestDVGeoMPhysESP(unittest.TestCase):
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals, atol=1e-6, rtol=1e-6)
+        commonUtils.assert_check_totals(totals, atol=1e-6, rtol=1e-6)
 
     def test_deriv_rev(self):
         self.prob.setup(mode="rev")
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-5, out_stream=None)
-        assert_check_totals(totals, atol=1e-5, rtol=1e-5)
+        commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-5)
 
 
 if __name__ == "__main__":

@@ -209,13 +209,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
-        if isinstance(DVGeo, DVGeometry):
-            for child in DVGeo.children.values():
-                # Embed points from parent if not already done
-                for pointSet in DVGeo.points:
-                    if pointSet not in child.points:
-                        child.addPointSet(DVGeo.points[pointSet], pointSet)
-
         if add_output:
             # add an output to the om component
             self.add_output(ptName, distributed=True, val=points.flatten())
@@ -468,7 +461,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # add the DV to DVGeo
         nVal = DVGeo.addLocalSectionDV(
-            dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
+            dvName=dvName,
+            secIndex=secIndex,
+            axis=axis,
+            pointSelect=pointSelect,
+            volList=volList,
+            orient0=orient0,
+            orient2=orient2,
+            config=config,
+            prependName=False,
         )
 
         # define the input
