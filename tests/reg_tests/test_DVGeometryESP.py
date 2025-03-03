@@ -391,7 +391,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
     numPhysicalCores = psutil.cpu_count(logical=False)
-    N_PROCS = int(np.clip(numPhysicalCores, 1, 16))
+    N_PROCS = 3
 
     def setUp(self):
         # Store the path where this current script lives
@@ -590,7 +590,7 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
     numPhysicalCores = psutil.cpu_count(logical=False)
-    N_PROCS = int(np.clip(numPhysicalCores, 1, 16))
+    N_PROCS = 4
 
     def setUp(self):
         # Store the path where this current script lives

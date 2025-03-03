@@ -7,5 +7,8 @@ if [[ $COMPILERS == "gcc" ]] && [[ -z $I_MPI_ROOT ]] && [[ "$(arch)" == "x86_64"
     EXTRA_FLAGS='--disallow_skipped'
 fi
 
+export OMPI_MCA_rmaps_base_oversubscribe=1
+export PRTE_MCA_rmaps_default_mapping_policy=:oversubscribe
+
 cd tests
 testflo -v -n 1 --coverage --coverpkg pygeo $EXTRA_FLAGS
