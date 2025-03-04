@@ -86,6 +86,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             elif info["type"] == "multi":
                 self.DVGeos.update({name: DVGeometryMulti(comm=self.comm, **options)})
 
+            else:
+                print(f"{info["type"]} is an unsupported DVGeoInfo type")
+
             # add each geometry to the constraints object
             for _, DVGeo in self.DVGeos.items():
                 self.DVCon.setDVGeo(DVGeo, name=DVConName)
