@@ -36,7 +36,7 @@ if mpiInstalled:
 
 numPhysicalCores = psutil.cpu_count(logical=False)
 N_PROCS_CUR = int(np.clip(numPhysicalCores, 1, 16))
-test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": N_PROCS_CUR, "name": "parallel_4procs"}]
+test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": N_PROCS_CUR, "name": "parallel"}]
 
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
