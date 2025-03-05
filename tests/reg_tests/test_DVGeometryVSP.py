@@ -24,11 +24,11 @@ if openvspInstalled:
     from pygeo import DVGeometryVSP
 
 numPhysicalCores = psutil.cpu_count(logical=False)
-N_PROCS_CUR = int(np.clip(numPhysicalCores, 1, 16))
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
 test_params = [
     # # Tutorial scalar JST
     {"N_PROCS": 1, "name": "serial"},
-    {"N_PROCS": N_PROCS_CUR, "name": "parallel_4procs"},
+    {"N_PROCS": N_PROCS_CUR, "name": "parallel"},
 ]
 
 
