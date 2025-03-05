@@ -390,7 +390,6 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
-    numPhysicalCores = psutil.cpu_count(logical=False)
     N_PROCS = 3
 
     def setUp(self):
@@ -589,7 +588,6 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
-    numPhysicalCores = psutil.cpu_count(logical=False)
     N_PROCS = 4
 
     def setUp(self):
