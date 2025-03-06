@@ -325,7 +325,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 class DVGeometryCSTPointSetParallel(unittest.TestCase):
     # Test in parallel
     numPhysicalCores = psutil.cpu_count(logical=False)
-    N_PROCS = int(np.clip(numPhysicalCores, 1, 16))
+    N_PROCS = int(np.clip(numPhysicalCores, 2, 16))
 
     def setUp(self):
         self.datFile = os.path.join(inputDir, self.fName)
