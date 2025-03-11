@@ -72,18 +72,18 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 options = info["options"]
 
             # this DVGeo uses FFD
-            if info["type"] == "ffd":
+            if info["type"].lower() == "ffd":
                 self.DVGeos.update({name: DVGeometry(info["file"], name=DVGeoName, **options)})
 
             # this DVGeo uses VSP
-            elif info["type"] == "vsp":
+            elif info["type"].lower() == "vsp":
                 self.DVGeos.update({name: DVGeometryVSP(info["file"], comm=self.comm, name=DVGeoName, **options)})
 
             # this DVGeo uses ESP
-            elif info["type"] == "esp":
+            elif info["type"].lower() == "esp":
                 self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=DVGeoName, **options)})
 
-            elif info["type"] == "multi":
+            elif info["type"].lower() == "multi":
                 self.DVGeos.update({name: DVGeometryMulti(comm=self.comm, **options)})
 
             else:
