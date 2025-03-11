@@ -30,14 +30,14 @@ inputDir = os.path.join(baseDir, "../../input_files")
 
 # Run the boxes test in series and in parallel
 numPhysicalCores = psutil.cpu_count(logical=False)
-N_PROCS_CUR = int(np.clip(numPhysicalCores, 1, 16))
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
 test_params = [
     {
-        "name": "one_proc",
+        "name": "serial",
         "N_PROCS": 1,
     },
     {
-        "name": "three_procs",
+        "name": "parallel",
         "N_PROCS": N_PROCS_CUR,
     },
 ]
