@@ -117,12 +117,15 @@ class TestFFDGeneration(unittest.TestCase):
             self.surf, self.surfFormat, leList, teList, nSpan, nChord, self.liftIndex, chordCosSpacing=0.75
         )
 
-        # Check that the generated FFD file matches the reference
-        DVGeo = DVGeometry(os.path.join(baseDir, "../../input_files/c172_fitted.xyz"))
+        # Check that the generated mesh matches the reference
+        flattenedMesh = mesh.reshape((-1, 3))
+        refMesh = np.loadtxt(os.path.join(baseDir, "../../input_files/c172-midsurfaceMesh.txt"))
+        np.testing.assert_allclose(flattenedMesh, refMesh, rtol=1e-13)
 
         # Check that the generated mesh fits inside the FFD
         # This is not an actual test because no errors are raised if the projection does not work
-        DVGeo.addPointSet(mesh.reshape((-1, 3)), "midsurfaceMesh")
+        DVGeo = DVGeometry(os.path.join(baseDir, "../../input_files/c172_fitted.xyz"))
+        DVGeo.addPointSet(flattenedMesh, "midsurfaceMesh")
 
 
 if __name__ == "__main__":
