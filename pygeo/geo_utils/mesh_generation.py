@@ -43,7 +43,9 @@ def createMidsurfaceMesh(
 
     rootOffset : float
         Point projection often fails if attempted at the exact wing root, this offset shifts the points at the wing root
-        inward slightly to avoid this, before shifting them back to the correct location after projection.
+        inward slightly to avoid this, before shifting them back to the correct location after projection. The value of
+        the offset is how far to shift the points as a fraction of the distance between the first and second
+        leading/trailing edge points
 
     Returns
     -------
@@ -95,9 +97,12 @@ def createMidsurfaceMesh(
         for jj, chordFraction in enumerate(chordwiseSpacing):
             meshCoords[jj, spanStart:spanEnd, :] = (1 - chordFraction) * leCoords + chordFraction * teCoords
 
-    # Shift the root points inward slightly to avoid projection errors
-    rootShiftVec = rootOffset * (leCoords[1] - leCoords[0])
-    meshCoords[:, 0, :] += rootShiftVec
+    # Shift the root points inward slightly to avoid projection errors, we want to shift the point at the root LE along
+    # the LE direction and the point at the root TE along the TE direction
+    rootShiftVec = np.outer((1 - chordwiseSpacing), (leCoords[1] - leCoords[0])) + np.outer(
+        chordwiseSpacing, (teCoords[1] - teCoords[0])
+    )
+    meshCoords[:, 0, :] += rootShiftVec * rootOffset
 
     # Now loop through all but the leading and trailing edge points and project to the surface, then take the midpoint
     # and set that as the midsurface
@@ -127,7 +132,7 @@ def createMidsurfaceMesh(
                     )
                 )
 
-    # Shift the root points back to their original location
-    meshCoords[:, 0, :] -= rootShiftVec
+    # Shift the root points back
+    meshCoords[:, 0, :] -= rootShiftVec * rootOffset
 
     return meshCoords
