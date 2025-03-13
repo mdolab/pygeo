@@ -1,6 +1,8 @@
-import numpy as np
+# External modules
 from baseclasses.utils import Error
+import numpy as np
 
+# Local modules
 from .projection import projectNode
 
 
