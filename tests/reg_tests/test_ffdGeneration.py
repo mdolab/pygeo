@@ -8,7 +8,8 @@ from stl.mesh import Mesh
 
 # First party modules
 from pygeo import DVGeometry
-from pygeo.geo_utils import createFittedWingFFD, write_wing_FFD_file, createMidsurfaceMesh
+from pygeo.geo_utils import (createFittedWingFFD, createMidsurfaceMesh,
+                             write_wing_FFD_file)
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
