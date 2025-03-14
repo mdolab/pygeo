@@ -37,9 +37,8 @@ def createMidsurfaceMesh(
         Number of chordwise points in the mesh.
 
     liftIndex : int
-        Index specifying which direction lift is in (same as the ADflow option).
-        Either 2 for the y-axis or 3 for the z-axis.
-        This is used to determine the wing's spanwise direction.
+        Index specifying which direction lift is in (same as the ADflow option). 1/2/3 for x/y/z-axis. This is used to 
+        determine the projection direction.
 
     chord_cos_spacing : float
         Cosine spacing factor for the chordwise points. 0.0 is uniform, 1.0 is cosine spacing.
