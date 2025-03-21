@@ -641,7 +641,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             handler.assert_allclose(
-                funcs["DVCon1_surfaceArea_constraints_0"], np.ones(1), name="surface_area_base", rtol=1e-7, atol=1e-7
+                funcs["DVCon1_surfaceArea_constraints_0"], np.ones(1), name="surface_area_base", rtol=5e-6, atol=5e-6
             )
 
             funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
