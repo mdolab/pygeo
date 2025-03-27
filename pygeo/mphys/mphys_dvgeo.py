@@ -31,6 +31,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.options.declare("type", default=None)
         self.options.declare("options", default=None)
         self.options.declare("DVGeoInfo", default=None)
+
+        # Need to initialize this here rather than `setup`,
+        # since `nom_add_discipline_coords` can be called before `setup`
         self.omPtInOutDict = {}
 
     def setup(self):
@@ -96,10 +99,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
         for var in inputs.keys():
-            # check that the input name matches the convention for points
+            # check that the input is in pointset dict
             if var in self.omPtInOutDict:
-                # trim the _in and add a "0" to signify that these are initial conditions initial
+                # retrieve corresponding output name
                 var_out = self.omPtInOutDict[var]
+                # add pointset if it doesn't already exist
                 if var_out not in self.omPtSetList:
                     self.nom_addPointSet(inputs[var], var_out, add_output=False)
 
