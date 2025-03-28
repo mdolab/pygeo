@@ -442,7 +442,7 @@ class DVGeometryESP(DVGeoSketch):
         t = np.zeros(npoints)
         uvlimArray = np.zeros((npoints, 4))
         tlimArray = np.zeros((npoints, 2))
-        dists = np.ones((npoints), dtype="float_") * 999999.0
+        dists = np.ones((npoints), dtype=float) * 999999.0
 
         t1 = time.time()
         # TODO parallelize projections for nondistributed pointsets?
