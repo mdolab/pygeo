@@ -10,6 +10,7 @@ from baseclasses import BaseRegTest
 from baseclasses.utils import Error
 import numpy as np
 from parameterized import parameterized_class
+import psutil
 from stl import mesh
 
 try:
@@ -33,7 +34,9 @@ if mpiInstalled:
         ocsmInstalled = False
 
 
-test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "parallel_4procs"}]
+numPhysicalCores = psutil.cpu_count(logical=False)
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
+test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": N_PROCS_CUR, "name": "parallel"}]
 
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")

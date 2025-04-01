@@ -9,6 +9,7 @@ from baseclasses import BaseRegTest
 from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
+import psutil
 
 try:
     # External modules
@@ -22,10 +23,12 @@ if openvspInstalled:
     # First party modules
     from pygeo import DVGeometryVSP
 
+numPhysicalCores = psutil.cpu_count(logical=False)
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
 test_params = [
     # # Tutorial scalar JST
     {"N_PROCS": 1, "name": "serial"},
-    {"N_PROCS": 4, "name": "parallel_4procs"},
+    {"N_PROCS": N_PROCS_CUR, "name": "parallel"},
 ]
 
 

@@ -13,6 +13,7 @@ from baseclasses import BaseRegTest
 from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
+import psutil
 
 try:
     # External modules
@@ -323,7 +324,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 @parameterized_class(airfoils)
 class DVGeometryCSTPointSetParallel(unittest.TestCase):
     # Test in parallel
-    N_PROCS = 4
+    numPhysicalCores = psutil.cpu_count(logical=False)
+    N_PROCS = int(np.clip(numPhysicalCores, 2, 16))
 
     def setUp(self):
         self.datFile = os.path.join(inputDir, self.fName)
@@ -427,11 +429,11 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
 
         # Turn the single element array to a number or None if the first
         # or last points aren't in this partition
-        if idxStart:
+        if idxStart.size > 0:
             idxStart = idxStart.item()
         else:
             idxStart = None
-        if idxEnd:
+        if idxEnd.size > 0:
             idxEnd = idxEnd.item()
         else:
             idxEnd = None

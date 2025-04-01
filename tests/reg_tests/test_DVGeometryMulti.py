@@ -8,6 +8,7 @@ from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
+import psutil
 
 # First party modules
 from pygeo import DVGeometry
@@ -28,14 +29,16 @@ baseDir = os.path.dirname(os.path.abspath(__file__))
 inputDir = os.path.join(baseDir, "../../input_files")
 
 # Run the boxes test in series and in parallel
+numPhysicalCores = psutil.cpu_count(logical=False)
+N_PROCS_CUR = int(np.clip(numPhysicalCores, 2, 16))
 test_params = [
     {
-        "name": "one_proc",
+        "name": "serial",
         "N_PROCS": 1,
     },
     {
-        "name": "three_procs",
-        "N_PROCS": 3,
+        "name": "parallel",
+        "N_PROCS": N_PROCS_CUR,
     },
 ]
 

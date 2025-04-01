@@ -76,19 +76,22 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 options = info["options"]
 
             # this DVGeo uses FFD
-            if info["type"] == "ffd":
+            if info["type"].lower() == "ffd":
                 self.DVGeos.update({name: DVGeometry(info["file"], name=DVGeoName, **options)})
 
             # this DVGeo uses VSP
-            elif info["type"] == "vsp":
+            elif info["type"].lower() == "vsp":
                 self.DVGeos.update({name: DVGeometryVSP(info["file"], comm=self.comm, name=DVGeoName, **options)})
 
             # this DVGeo uses ESP
-            elif info["type"] == "esp":
+            elif info["type"].lower() == "esp":
                 self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=DVGeoName, **options)})
 
-            elif info["type"] == "multi":
+            elif info["type"].lower() == "multi":
                 self.DVGeos.update({name: DVGeometryMulti(comm=self.comm, **options)})
+
+            else:
+                raise Exception(f"{info['type']} is an unsupported DVGeoInfo type")
 
             # add each geometry to the constraints object
             for _, DVGeo in self.DVGeos.items():
@@ -214,13 +217,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
-
-        if isinstance(DVGeo, DVGeometry):
-            for child in DVGeo.children.values():
-                # Embed points from parent if not already done
-                for pointSet in DVGeo.points:
-                    if pointSet not in child.points:
-                        child.addPointSet(DVGeo.points[pointSet], pointSet)
 
         if add_output:
             # add an output to the om component
@@ -474,7 +470,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # add the DV to DVGeo
         nVal = DVGeo.addLocalSectionDV(
-            dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
+            dvName=dvName,
+            secIndex=secIndex,
+            axis=axis,
+            pointSelect=pointSelect,
+            volList=volList,
+            orient0=orient0,
+            orient2=orient2,
+            config=config,
+            prependName=False,
         )
 
         # define the input

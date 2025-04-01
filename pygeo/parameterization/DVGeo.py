@@ -1215,7 +1215,7 @@ class DVGeometry(BaseDVGeometry):
             dvs_shape = np.delete(topo_shape, spanIdx)
 
             # get total number of dvs
-            n_dvs = np.product(dvs_shape)
+            n_dvs = np.prod(dvs_shape)
 
             # make a map from dvs to the ind that are controlled by that dv.
             # (phrased another way) map from dv to all ind in the same span size position
