@@ -2446,7 +2446,7 @@ class DVGeometry(BaseDVGeometry):
 
         # now that we have self.JT compute the Mat-Mat multiplication
         nDV = self._getNDV()
-        
+
         if self.JT[ptSetName] is None:
             dIdx_local = np.zeros((N, nDV), "d")
         else:
