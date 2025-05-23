@@ -7,3 +7,6 @@ doc/_build
 *testflo_report.out
 input_files
 .isort.cfg
+reports/
+.vscode/
+*.dat
