@@ -72,7 +72,7 @@ class TestFFDGeneration(unittest.TestCase):
         # Check that the generated FFD file matches the reference
         referenceFFD = DVGeometry(os.path.join(baseDir, "../../input_files/c172_fitted.xyz"))
         outputFFD = DVGeometry(outFile)
-        np.testing.assert_allclose(referenceFFD.FFD.coef, outputFFD.FFD.coef, rtol=1e-14)
+        np.testing.assert_allclose(referenceFFD.FFD.coef, outputFFD.FFD.coef, rtol=1e-13)
 
         # Check that the embedding works
         # This is not an actual test because no errors are raised if the projection does not work

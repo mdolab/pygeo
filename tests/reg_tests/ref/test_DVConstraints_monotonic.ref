@@ -127,15 +127,7 @@
                 2
             ]
         },
-        "DVCon1_monotonic_constraint_1": {
-            "__ndarray__": [
-                -1.0
-            ],
-            "dtype": "float64",
-            "shape": [
-                1
-            ]
-        }
+        "DVCon1_monotonic_constraint_1": -1.0
     },
     "funcs_base": {
         "DVCon1_monotonic_constraint_0": {
@@ -148,15 +140,7 @@
                 2
             ]
         },
-        "DVCon1_monotonic_constraint_1": {
-            "__ndarray__": [
-                0.0
-            ],
-            "dtype": "float64",
-            "shape": [
-                1
-            ]
-        }
+        "DVCon1_monotonic_constraint_1": 0.0
     },
     "funcs_twisted": {
         "DVCon1_monotonic_constraint_0": {
@@ -169,14 +153,6 @@
                 2
             ]
         },
-        "DVCon1_monotonic_constraint_1": {
-            "__ndarray__": [
-                -5.0
-            ],
-            "dtype": "float64",
-            "shape": [
-                1
-            ]
-        }
+        "DVCon1_monotonic_constraint_1": -5.0
     }
 }

@@ -8,15 +8,44 @@ from pyspline import Curve
 # First party modules
 from pygeo import DVGeometry, DVGeometryAxi
 
+
+def assert_check_totals(totals, atol=1e-6, rtol=1e-6):
+    """
+    Check the totals dictionary for the forward and reverse mode derivatives.
+
+    This is better than OpenMDAO's `assert_check_totals` because it uses numpy's `assert_allclose` which eliminates the
+    issue of huge relative errors when comparing very small values.
+    """
+    for key in totals:
+        derivs = totals[key]
+        ref = derivs["J_fd"]
+        if "J_fwd" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_fwd"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Forward derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
+        if "J_rev" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_rev"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Reverse derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
+
+
 ##################
 # DVGeometry Tests
 ##################
 
 
-def setupDVGeo(base_path, rotType=None):
+def setupDVGeo(base_path, rotType=None, parentName=None, childName=None):
     # create the Parent FFD
     FFDFile = os.path.join(base_path, "../../input_files/outerBoxFFD.xyz")
-    DVGeo = DVGeometry(FFDFile)
+    DVGeo = DVGeometry(FFDFile, name=parentName)
 
     # create a reference axis for the parent
     axisPoints = [[-1.0, 0.0, 0.0], [1.5, 0.0, 0.0]]
@@ -29,7 +58,7 @@ def setupDVGeo(base_path, rotType=None):
 
     # create the child FFD
     FFDFile = os.path.join(base_path, "../../input_files/simpleInnerFFD.xyz")
-    DVGeoChild = DVGeometry(FFDFile, child=True)
+    DVGeoChild = DVGeometry(FFDFile, child=True, name=childName)
 
     # create a reference axis for the child
     axisPoints = [[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
@@ -283,3 +312,53 @@ def spanX(val, geo):
         C[i, 0] *= val
 
     geo.restoreCoef(C, axis_key)
+
+
+def getShapeFunc(lidx, direction=None):
+    """
+    Get shape dictionaries for use with shape function DVs. Common to DVGeometry and MPhys DVGeo tests.
+    Requires local index from DVGeo object and optionally a three-element numpy array for the
+    positive direction vector and returns shapes.
+    """
+    shape_1 = {}
+    shape_2 = {}
+
+    k_center = 2
+    i_center = 1
+    n_chord = lidx.shape[0]
+
+    d_up = np.array([0.0, 1.0, 0.0])
+    if direction is not None:
+        d_up = direction
+        d_up /= np.linalg.norm(d_up)
+
+    for kk in [-1, 0, 1]:
+        if kk == 0:
+            k_weight = 1.0
+        else:
+            k_weight = 0.5
+
+        for ii in range(n_chord):
+            # compute the chord weight. we want the shape to peak at i_center
+            if ii == i_center:
+                i_weight = 1.0
+            elif ii < i_center:
+                # we are ahead of the center point
+                i_weight = ii / i_center
+            else:
+                # we are behind the center point
+                i_weight = (n_chord - ii - 1) / (n_chord - i_center - 1)
+
+            # scale direction by the i and k weights
+            d_up_scaled = d_up * k_weight * i_weight
+
+            # get this point's global index and add to the dictionary with the direction vector.
+            gidx_up = lidx[ii, 1, kk + k_center]
+            gidx_down = lidx[ii, 0, kk + k_center]
+
+            shape_1[gidx_up] = d_up_scaled
+            # the lower face is perturbed with a separate dictionary
+            shape_2[gidx_down] = -d_up_scaled
+
+    shapes = [shape_1, shape_2]
+    return shapes

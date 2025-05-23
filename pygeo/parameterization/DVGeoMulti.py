@@ -40,6 +40,7 @@ class DVGeometryMulti:
     ----------
     comm : MPI.IntraComm, optional
        The communicator associated with this geometry object.
+       This is also used to parallelize the triangulated meshes.
 
     checkDVs : bool, optional
         Flag to check whether there are duplicate DV names in or across components.
@@ -52,14 +53,7 @@ class DVGeometryMulti:
 
     """
 
-    def __init__(
-        self,
-        comm=MPI.COMM_WORLD,
-        filletIntersection=False,
-        checkDVs=True,
-        debug=False,
-        isComplex=False,
-    ):
+    def __init__(self, comm=MPI.COMM_WORLD, filletIntersection=False, checkDVs=True, debug=False, isComplex=False):
         # Check to make sure pySurf is installed before initializing
         if not pysurfInstalled and not filletIntersection:
             raise ImportError("pySurf is not installed and is required to use DVGeometryMulti outside of fillet mode.")
@@ -144,9 +138,6 @@ class DVGeometryMulti:
         else:
             isFillet = False
 
-        # if self.filletIntersection is True and triMesh is not None:
-        # this should work with a triangulated surface it just isn't necessary
-
         # Assign mutable defaults
         if bbox is None:
             bbox = {}
@@ -175,6 +166,51 @@ class DVGeometryMulti:
                 xMax[1] = bbox["ymax"]
             if "zmax" in bbox:
                 xMax[2] = bbox["zmax"]
+
+        if triMesh is not None:
+            # We also need to read the triMesh and save the points
+            nodes, triConn, triConnStack, barsConn = self._readCGNSFile(triMesh)
+
+            # scale the nodes
+            nodes *= scale
+
+            # We will split up the points by processor when adding them to the component DVGeo
+
+            # Compute the processor sizes with integer division
+            sizes = np.zeros(self.comm.size, dtype="intc")
+            nPts = nodes.shape[0]
+            sizes[:] = nPts // self.comm.size
+
+            # Add the leftovers
+            sizes[: nPts % self.comm.size] += 1
+
+            # Compute the processor displacements
+            disp = np.zeros(self.comm.size + 1, dtype="intc")
+            disp[1:] = np.cumsum(sizes)
+
+            # Save the size and displacement in a dictionary
+            triMeshData = {}
+            triMeshData["sizes"] = sizes
+            triMeshData["disp"] = disp
+
+            # Split up the points into the points for this processor
+            procNodes = nodes[disp[self.comm.rank] : disp[self.comm.rank + 1]]
+
+            # Add these points to the component DVGeo
+            DVGeo.addPointSet(procNodes, "triMesh", **pointSetKwargs)
+        else:
+            # the user has not provided a triangulated surface mesh for this file
+            nodes = None
+            triConn = None
+            triConnStack = None
+            barsConn = None
+            triMeshData = None
+
+        # we have a fillet so no structured surfaces are necessary
+        if self.filletIntersection:
+            if points is not None:
+                # save unstructured point data
+                surfPts = self._readDATFile(points, surf=True)
 
         # we have a fillet so no structured surfaces are necessary
         if self.filletIntersection:
@@ -216,7 +252,7 @@ class DVGeometryMulti:
                 barsConn = None
 
             # initialize the component object
-            component = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax)
+            component = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData)
 
         # add component object to the dictionary and list keeping track of components
         # if this component is a fillet (no DVGeo) put in a separate list to avoid unnecessary checks for a DVGeo later
@@ -234,10 +270,11 @@ class DVGeometryMulti:
         dStarA=0.2,
         dStarB=0.2,
         featureCurves=None,
-        distTol=1e-4,
+        distTol=1e-14,
         project=False,
         marchDir=1,
         includeCurves=False,
+        slidingCurves=None,
         intDir=None,
         curveEpsDict=None,
         trackSurfaces=None,
@@ -257,6 +294,9 @@ class DVGeometryMulti:
 
         compB : str
             The name of the second component.
+
+        filletComp : str
+            The name of the fillet component.
 
         dStarA : float, optional
             Distance from the intersection over which the inverse-distance deformation is applied on compA.
@@ -288,6 +328,10 @@ class DVGeometryMulti:
 
         includeCurves : bool, optional
             Flag to specify whether to include features curves in the inverse-distance deformation.
+
+        slidingCurves : list, optional
+            The list of curves to project to, but on which the mesh nodes are not frozen in their initial positions.
+            This allows the mesh nodes to slide along the feature curve.
 
         intDir : int, optional
             If there are multiple intersection curves, this specifies which curve to choose.
@@ -322,7 +366,6 @@ class DVGeometryMulti:
             This can be useful when the initial intersection curve is skewed.
 
         """
-
         # only necessary in fillet but store because there's a broad check later
         self.rotate = rotate
 
@@ -338,6 +381,8 @@ class DVGeometryMulti:
             # Assign mutable defaults
             if featureCurves is None:
                 featureCurves = []
+            if slidingCurves is None:
+                slidingCurves = []
             if curveEpsDict is None:
                 curveEpsDict = {}
             if trackSurfaces is None:
@@ -356,6 +401,7 @@ class DVGeometryMulti:
                 project,
                 marchDir,
                 includeCurves,
+                slidingCurves,
                 intDir,
                 curveEpsDict,
                 trackSurfaces,
@@ -482,15 +528,7 @@ class DVGeometryMulti:
         return self.DVGeoDict
 
     def addPointSet(
-        self,
-        points,
-        ptName,
-        familyName=None,
-        compNames=None,
-        comm=None,
-        applyIC=False,
-        coordXfer=None,
-        **kwargs,
+        self, points, ptName, familyName=None, compNames=None, comm=None, applyIC=False, coordXfer=None, **kwargs
     ):
         """
         Add a set of coordinates to DVGeometryMulti.
@@ -505,14 +543,15 @@ class DVGeometryMulti:
             A user supplied name to associate with the set of coordinates.
             This name will need to be provided when updating the coordinates
             or when getting the derivatives of the coordinates.
+        ptName : str, optional
+            A user supplied name to associate with the mesh family that this set of coordinates belongs to.
+            This is needed to grab the correct points from the CFD mesh.
         compNames : list, optional
             A list of component names that this point set should be added to.
             To ease bookkeeping, an empty point set with ptName will be added to components not in this list.
             If a list is not provided, this point set is added to all components.
         comm : MPI.IntraComm, optional
-            Comm that is associated with the added point set. Does not
-            work now, just added to be consistent with the API of
-            other DVGeo types.
+            The communicator that is associated with the added point set.
         applyIC : bool, optional
             Flag to specify whether this point set will follow the updated intersection curve(s).
             This is typically only needed for the CFD surface mesh.
@@ -609,7 +648,6 @@ class DVGeometryMulti:
                         IC.findIntersection(points, IC.compB.curvePts)
                     )
 
-                    # print(f"\nrank {self.comm.rank} local compAInterInd {compAInterIndLocal}")
                     _, _, compAInterPts, compAInterInd = IC._commCurveProj(
                         compAInterPtsLocal, compAInterIndLocal, self.comm
                     )
@@ -627,16 +665,9 @@ class DVGeometryMulti:
                     compAInterPts.dtype = self.dtype
                     compBInterPts.dtype = self.dtype
 
-                    # print(f"\nrank {self.comm.rank} local compBInterInd {compBInterIndLocal}")
-                    # print(f"\nrank {self.comm.rank} total compBInterInd {compAInterInd}")
-                    # print(f"\nrank {self.comm.rank} total compBInterInd {compBInterPts}")
-
                     # add those intersection points to each DVGeo so they get deformed with the FFD
                     compAPtsName = f"{IC.compA.name}_fillet_intersection_main"
                     compBPtsName = f"{IC.compB.name}_fillet_intersection_main"
-
-                    # print(f"\nrank {self.comm.rank} compAInterPts {compAInterPts}")
-                    # print(f"\nrank {self.comm.rank} compBInterPts {compAInterPts}")
 
                     IC.compA.DVGeo.addPointSet(compAInterPts, compAPtsName)
                     IC.compB.DVGeo.addPointSet(compBInterPts, compBPtsName)
@@ -1430,7 +1461,7 @@ class DVGeometryMulti:
 
 
 class component:
-    def __init__(self, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax):
+    def __init__(self, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData):
         # save the info
         self.name = name
         self.DVGeo = DVGeo
@@ -1440,6 +1471,7 @@ class component:
         self.barsConn = barsConn
         self.xMin = xMin
         self.xMax = xMax
+        self.triMeshData = triMeshData
 
         # also a dictionary for DV names
         self.dvDict = {}
@@ -1450,9 +1482,35 @@ class component:
         else:
             self.triMesh = True
 
-    def updateTriMesh(self):
-        # update the triangulated surface mesh
-        self.nodes = self.DVGeo.update("trimesh")
+    def updateTriMesh(self, comm):
+        # We need the full triangulated surface for this component
+        # Get the stored processor splitting information
+        sizes = self.triMeshData["sizes"]
+        disp = self.triMeshData["disp"]
+        nPts = disp[-1]
+
+        # Update the triangulated surface mesh to get the points on this processor
+        procNodes = self.DVGeo.update("triMesh")
+
+        # Create the send buffer
+        procNodes = procNodes.flatten()
+        sendbuf = [procNodes, sizes[comm.rank] * 3]
+
+        # Set the appropriate type for the receiving buffer
+        if procNodes.dtype == float:
+            mpiType = MPI.DOUBLE
+        elif procNodes.dtype == complex:
+            mpiType = MPI.DOUBLE_COMPLEX
+
+        # Create the receiving buffer
+        globalNodes = np.zeros(nPts * 3, dtype=procNodes.dtype)
+        recvbuf = [globalNodes, sizes * 3, disp[0:-1] * 3, mpiType]
+
+        # Allgather the updated coordinates
+        comm.Allgatherv(sendbuf, recvbuf)
+
+        # Reshape into a nPts, 3 array
+        self.nodes = globalNodes.reshape((nPts, 3))
 
 
 class Comp:
@@ -1761,6 +1819,7 @@ class CompIntersection(Intersection):
         project,
         marchDir,
         includeCurves,
+        slidingCurves,
         intDir,
         curveEpsDict,
         trackSurfaces,
@@ -1800,13 +1859,13 @@ class CompIntersection(Intersection):
             self.curveSearchAPI = curveSearchAPI.curvesearchapi
             self.intersectionAPI = intersectionAPI.intersectionapi
             self.utilitiesAPI = utilitiesAPI.utilitiesapi
-            self.mpi_type = MPI.DOUBLE
+            self.mpiType = MPI.DOUBLE
         elif dtype == complex:
             self.adtAPI = adtAPI_cs.adtapi
             self.curveSearchAPI = curveSearchAPI_cs.curvesearchapi
             self.intersectionAPI = intersectionAPI_cs.intersectionapi
             self.utilitiesAPI = utilitiesAPI_cs.utilitiesapi
-            self.mpi_type = MPI.C_DOUBLE_COMPLEX
+            self.mpiType = MPI.DOUBLE_COMPLEX
 
         # tolerance used for each curve when mapping nodes to curves
         self.curveEpsDict = {}
@@ -1940,6 +1999,10 @@ class CompIntersection(Intersection):
         # flag to include feature curves in ID-warping
         self.incCurves = includeCurves
 
+        # List of curves that allow nodes to slide on them. We only use these for the projection step,
+        # but these curves are not included as seeds in the curve-based deformation.
+        self.slidingCurves = slidingCurves
+
         # direction to pick if we have multiple intersection curves
         self.intDir = intDir
 
@@ -2019,8 +2082,8 @@ class CompIntersection(Intersection):
             # Create the dictionaries to save projection data
             self.projData[ptSetName] = {
                 # We need one dictionary for each component
-                "compA": {"surfaceInd": {}},
-                "compB": {"surfaceInd": {}},
+                "compA": {"surfaceIndMapDict": {}},
+                "compB": {"surfaceIndMapDict": {}},
             }
 
             if nPoints > 0 and self.excludeSurfaces:
@@ -2032,13 +2095,19 @@ class CompIntersection(Intersection):
                 # Combine the excluded indices using a set to avoid duplicates
                 excludeSet = set()
                 for surface in self.excludeSurfaces:
-                    if surface in self.compA.triConn:
-                        # Pop this surface from the saved data
-                        surfaceInd = self.projData[ptSetName]["compA"]["surfaceInd"].pop(surface)
-                    elif surface in self.compB.triConn:
-                        surfaceInd = self.projData[ptSetName]["compB"]["surfaceInd"].pop(surface)
+                    surfaceIndMapDictA = self.projData[ptSetName]["compA"]["surfaceIndMapDict"]
+                    surfaceIndMapDictB = self.projData[ptSetName]["compB"]["surfaceIndMapDict"]
 
-                    excludeSet.update(surfaceInd)
+                    if surface in surfaceIndMapDictA:
+                        # Pop this surface from the saved data
+                        surfaceIndMap = surfaceIndMapDictA.pop(surface)
+                    elif surface in surfaceIndMapDictB:
+                        surfaceIndMap = surfaceIndMapDictB.pop(surface)
+                    else:
+                        # This processor has no points on this excluded surface
+                        surfaceIndMap = set()
+
+                    excludeSet.update(surfaceIndMap)
 
                 # Invert excludeSet to get the points we want to keep
                 oneToN = set(range(nPoints))
@@ -2081,6 +2150,14 @@ class CompIntersection(Intersection):
             self.projData[ptSetName]["compB"]["flag"] = flagB
             self.projData[ptSetName]["compB"]["ind"] = indB
 
+            # Initialize component-wide projection indices as all the indices
+            # We will remove points associated with tracked surfaces below
+            indAComp = indA.copy()
+            indBComp = indB.copy()
+
+            self.projData[ptSetName]["compA"]["indSurfDict"] = {}
+            self.projData[ptSetName]["compB"]["indSurfDict"] = {}
+
             # Associate points with the tracked surfaces
             for surface in self.trackSurfaces:
                 surfaceEps = self.trackSurfaces[surface]
@@ -2094,6 +2171,45 @@ class CompIntersection(Intersection):
                 # This proc has some points to project
                 if len(compPoints) > 0:
                     self.associatePointsToSurface(compPoints, ptSetName, surface, surfaceEps)
+
+            # Determine the component-wide projection indices for compA
+            # Also remove any duplicates if points are assigned to multiple surfaces
+            surfaceIndMapDictA = self.projData[ptSetName]["compA"]["surfaceIndMapDict"]
+            for surface in surfaceIndMapDictA:
+                surfaceIndMapA = surfaceIndMapDictA[surface]
+
+                # Get the subset of indices that is associated with this surface
+                indASurf = [indA[i] for i in surfaceIndMapA]
+
+                # Iterate over a copy of the indices because they might change in the loop
+                for ind in indASurf.copy():
+                    try:
+                        # Remove this point from the component-wide projection indices
+                        indAComp.remove(ind)
+                    except ValueError:
+                        # This point is already associated with another surface so remove it from this surface
+                        indASurf.remove(ind)
+
+                # Store the projection indices for this surface if there are any
+                if indASurf:
+                    self.projData[ptSetName]["compA"]["indSurfDict"][surface] = indASurf
+
+            # Store the component-wide projection indices
+            self.projData[ptSetName]["compA"]["indAComp"] = indAComp
+
+            # Do the same for compB
+            surfaceIndMapDictB = self.projData[ptSetName]["compB"]["surfaceIndMapDict"]
+            for surface in surfaceIndMapDictB:
+                surfaceIndMapB = surfaceIndMapDictB[surface]
+                indBSurf = [indB[i] for i in surfaceIndMapB]
+                for ind in indBSurf.copy():
+                    try:
+                        indBComp.remove(ind)
+                    except ValueError:
+                        indBSurf.remove(ind)
+                if indBSurf:
+                    self.projData[ptSetName]["compB"]["indSurfDict"][surface] = indBSurf
+            self.projData[ptSetName]["compB"]["indBComp"] = indBComp
 
             # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
             if self.incCurves:
@@ -2123,13 +2239,7 @@ class CompIntersection(Intersection):
                     elemIDs[:] = elemIDs + 1
                     # (we need to do this separetely because Fortran will actively change elemIDs contents.
                     self.curveSearchAPI.mindistancecurve(
-                        ptsToCurves.T,
-                        self.seam0.T,
-                        self.seamConn.T + 1,
-                        xyzProj.T,
-                        tanProj.T,
-                        dist2,
-                        elemIDs,
+                        ptsToCurves.T, self.seam0.T, self.seamConnFull.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                     )
 
                     # Adjust indices back to Python standards
@@ -2239,7 +2349,7 @@ class CompIntersection(Intersection):
         # we use the initial seam coordinates here
         coor = self.seam0
         # bar connectivity for the remeshed elements
-        conn = self.seamConn
+        conn = self.seamConnWarp
         # deltas for each point (nNode, 3) in size
         if self.seam.shape == self.seam0.shape:
             dr = self.seam - self.seam0
@@ -2346,7 +2456,7 @@ class CompIntersection(Intersection):
         # we use the initial seam coordinates here
         coor = self.seam0
         # bar connectivity for the remeshed elements
-        conn = self.seamConn
+        conn = self.seamConnWarp
 
         # Get the two end points for the line elements
         r0 = coor[conn[:, 0]]
@@ -2486,7 +2596,7 @@ class CompIntersection(Intersection):
             # conn of the current curve
             seamBeg = self.seamBeg[curveName]
             seamEnd = self.seamEnd[curveName]
-            curveConn = self.seamConn[seamBeg:seamEnd]
+            curveConn = self.seamConnFull[seamBeg:seamEnd]
 
             # Project these to the combined curves using pySurf
             # Get number of points
@@ -2566,7 +2676,7 @@ class CompIntersection(Intersection):
                 nptsg = self.nCurvePts[ptSetName][curveName]
                 deltaGlobal = np.zeros(nptsg * 3, dtype=self.dtype)
 
-                recvbuf = [deltaGlobal, sizes * 3, disp * 3, self.mpi_type]
+                recvbuf = [deltaGlobal, sizes * 3, disp * 3, self.mpiType]
 
                 # do an allgatherv
                 comm.Allgatherv(sendbuf, recvbuf)
@@ -2633,29 +2743,22 @@ class CompIntersection(Intersection):
         flagA = self.projData[ptSetName]["compA"]["flag"]
         flagB = self.projData[ptSetName]["compB"]["flag"]
 
-        # Initialize component-wide projection indices
-        indAComp = self.projData[ptSetName]["compA"]["ind"].copy()
-        indBComp = self.projData[ptSetName]["compB"]["ind"].copy()
+        # Get the component-wide projection indices
+        indAComp = self.projData[ptSetName]["compA"]["indAComp"]
+        indBComp = self.projData[ptSetName]["compB"]["indBComp"]
 
         # call the actual driver with the info to prevent code multiplication
         if flagA:
             # First project points on the tracked surfaces
-            surfaceIndA = self.projData[ptSetName]["compA"]["surfaceInd"]
-            for surface in surfaceIndA:
-                surfaceInd = surfaceIndA[surface]
-
-                # Get the subset of indices that is associated with this surface
-                indA = [self.projData[ptSetName]["compA"]["ind"][i] for i in surfaceInd]
-
-                # Remove these points from the component-wide projection indices
-                for ind in indA:
-                    indAComp.remove(ind)
+            indSurfDictA = self.projData[ptSetName]["compA"]["indSurfDict"]
+            for surface in indSurfDictA:
+                indASurf = indSurfDictA[surface]
 
                 # get the points using the mapping
-                ptsA = newPts[indA]
+                ptsA = newPts[indASurf]
                 # call the projection routine with the info
                 # this returns the projected points and we use the same mapping to put them back in place
-                newPts[indA] = self._projectToComponent(
+                newPts[indASurf] = self._projectToComponent(
                     ptsA, self.compA, self.projData[ptSetName][surface], surface=surface
                 )
 
@@ -2666,24 +2769,17 @@ class CompIntersection(Intersection):
 
         # do the same for B
         if flagB:
-            surfaceIndB = self.projData[ptSetName]["compB"]["surfaceInd"]
-            for surface in surfaceIndB:
-                surfaceInd = surfaceIndB[surface]
-                indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
-                for ind in indB:
-                    indBComp.remove(ind)
-                ptsB = newPts[indB]
-                newPts[indB] = self._projectToComponent(
+            indSurfDictB = self.projData[ptSetName]["compB"]["indSurfDict"]
+            for surface in indSurfDictB:
+                indBSurf = indSurfDictB[surface]
+                ptsB = newPts[indBSurf]
+                newPts[indBSurf] = self._projectToComponent(
                     ptsB, self.compB, self.projData[ptSetName][surface], surface=surface
                 )
 
             if indBComp:
                 ptsB = newPts[indBComp]
                 newPts[indBComp] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
-
-        # Store component-wide indices for derivative computation
-        self.projData[ptSetName]["compA"]["indAComp"] = indAComp
-        self.projData[ptSetName]["compB"]["indBComp"] = indBComp
 
     def project_b(self, ptSetName, dIdpt, comm):
         # call the functions to propagate ad seeds bwd
@@ -2708,90 +2804,76 @@ class CompIntersection(Intersection):
             indAComp = self.projData[ptSetName]["compA"]["indAComp"]
             if indAComp:
                 dIdptA = dIdpt[:, indAComp]
-                dIdpt[:, indAComp], compSensA = self._projectToComponent_b(
+                dIdpt[:, indAComp], dIdptTriA = self._projectToComponent_b(
                     dIdptA, self.compA, self.projData[ptSetName]["compA"]
                 )
 
             # First project points on the tracked surfaces
-            surfaceIndA = self.projData[ptSetName]["compA"]["surfaceInd"]
-            for surface in surfaceIndA:
-                surfaceInd = surfaceIndA[surface]
-
-                # Get the subset of indices that is associated with this surface
-                indA = [self.projData[ptSetName]["compA"]["ind"][i] for i in surfaceInd]
+            indSurfDictA = self.projData[ptSetName]["compA"]["indSurfDict"]
+            for surface in indSurfDictA:
+                indASurf = indSurfDictA[surface]
 
                 # get the points using the mapping
-                dIdptA = dIdpt[:, indA]
+                dIdptA = dIdpt[:, indASurf]
                 # call the projection routine with the info
                 # this returns the projected points and we use the same mapping to put them back in place
-                dIdpt[:, indA], compSensA_temp = self._projectToComponent_b(
-                    dIdptA,
-                    self.compA,
-                    self.projData[ptSetName][surface],
-                    surface=surface,
+                dIdpt[:, indASurf], dIdptTriA_temp = self._projectToComponent_b(
+                    dIdptA, self.compA, self.projData[ptSetName][surface], surface=surface
                 )
 
-                # Accumulate triangulated mesh sensitivities
-                for k, v in compSensA_temp.items():
-                    try:
-                        compSensA[k] += v
-                    except KeyError:
-                        compSensA[k] = v
+                # Accumulate triangulated mesh seeds
+                try:
+                    dIdptTriA += dIdptTriA_temp
+                except NameError:
+                    dIdptTriA = dIdptTriA_temp
 
-            for k, v in compSensA.items():
-                compSens_local[k] = v
-
-        # set the compSens entries to all zeros on these procs
+        # Set the triangulated mesh seeds to all zeros on these procs
         else:
-            # get the values from each DVGeo
-            xA = self.compA.DVGeo.getValues()
+            dIdptTriA = np.zeros(self.compA.nodes.shape)
 
-            # loop over each entry in xA and xB and create a dummy zero gradient array for all
-            for k, v in xA.items():
-                # create the zero array:
-                zeroSens = np.zeros((N, v.shape[0]))
-                compSens_local[k] = zeroSens
+        # Allreduce the triangulated mesh seeds
+        dIdptTriA = self.comm.allreduce(dIdptTriA)
+
+        # Extract the entries of dIdptTri that are for points on this processor
+        disp = self.compA.triMeshData["disp"]
+        dIdptTriA = dIdptTriA[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
+
+        # Call the total sensitivity of the component's DVGeo
+        compSensA = self.compA.DVGeo.totalSensitivity(dIdptTriA, "triMesh")
+
+        for k, v in compSensA.items():
+            compSens_local[k] = v
 
         # do the same for B
         if flagB:
             indBComp = self.projData[ptSetName]["compB"]["indBComp"]
             if indBComp:
                 dIdptB = dIdpt[:, indBComp]
-                dIdpt[:, indBComp], compSensB = self._projectToComponent_b(
+                dIdpt[:, indBComp], dIdptTriB = self._projectToComponent_b(
                     dIdptB, self.compB, self.projData[ptSetName]["compB"]
                 )
 
-            surfaceIndB = self.projData[ptSetName]["compB"]["surfaceInd"]
-            for surface in surfaceIndB:
-                surfaceInd = surfaceIndB[surface]
-                indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
-                dIdptB = dIdpt[:, indB]
-                dIdpt[:, indB], compSensB_temp = self._projectToComponent_b(
-                    dIdptB,
-                    self.compB,
-                    self.projData[ptSetName][surface],
-                    surface=surface,
+            indSurfDictB = self.projData[ptSetName]["compB"]["indSurfDict"]
+            for surface in indSurfDictB:
+                indBSurf = indSurfDictB[surface]
+                dIdptB = dIdpt[:, indBSurf]
+                dIdpt[:, indBSurf], dIdptTriB_temp = self._projectToComponent_b(
+                    dIdptB, self.compB, self.projData[ptSetName][surface], surface=surface
                 )
 
-                for k, v in compSensB_temp.items():
-                    try:
-                        compSensB[k] += v
-                    except KeyError:
-                        compSensB[k] = v
-
-            for k, v in compSensB.items():
-                compSens_local[k] = v
-
-        # set the compSens entries to all zeros on these procs
+                try:
+                    dIdptTriB += dIdptTriB_temp
+                except NameError:
+                    dIdptTriB = dIdptTriB_temp
         else:
-            # get the values from each DVGeo
-            xB = self.compB.DVGeo.getValues()
+            dIdptTriB = np.zeros(self.compB.nodes.shape)
 
-            # loop over each entry in xA and xB and create a dummy zero gradient array for all
-            for k, v in xB.items():
-                # create the zero array:
-                zeroSens = np.zeros((N, v.shape[0]))
-                compSens_local[k] = zeroSens
+        dIdptTriB = self.comm.allreduce(dIdptTriB)
+        disp = self.compB.triMeshData["disp"]
+        dIdptTriB = dIdptTriB[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
+        compSensB = self.compB.DVGeo.totalSensitivity(dIdptTriB, "triMesh")
+        for k, v in compSensB.items():
+            compSens_local[k] = v
 
         # finally sum the results across procs if we are provided with a comm
         if comm:
@@ -3093,7 +3175,7 @@ class CompIntersection(Intersection):
         normProjb = np.zeros_like(normProjNotNorm)
 
         # also create the dIdtp for the triangulated surface nodes
-        dIdptComp = np.zeros((dIdpt.shape[0], comp.nodes.shape[0], 3))
+        dIdptTri = np.zeros((dIdpt.shape[0], comp.nodes.shape[0], 3))
 
         # now propagate the ad seeds back for each function
         for i in range(dIdpt.shape[0]):
@@ -3131,26 +3213,23 @@ class CompIntersection(Intersection):
             # Put the reverse ad seed back into dIdpt
             dIdpt[i] = xyzb
             # Also save the triangulated surface node seeds
-            dIdptComp[i] = coorb
+            dIdptTri[i] = coorb
 
         # Now we are done with the ADT
         self.adtAPI.adtdeallocateadts(adtID)
 
-        # Call the total sensitivity of the component's DVGeo
-        compSens = comp.DVGeo.totalSensitivity(dIdptComp, "triMesh")
+        # The entries in dIdpt are replaced with AD seeds of initial points that were projected
+        # We also return the seeds for the component's triangulated mesh in dIdptTri
+        return dIdpt, dIdptTri
 
-        # the entries in dIdpt is replaced with AD seeds of initial points that were projected
-        # we also return the total sensitivity contributions from components' triMeshes
-        return dIdpt, compSens
-
-    def _getUpdatedCoords(self):
+    def _getUpdatedCoords(self, comm):
         # this code returns the updated coordinates
 
         # first comp a
-        self.compA.updateTriMesh()
+        self.compA.updateTriMesh(comm)
 
         # then comp b
-        self.compB.updateTriMesh()
+        self.compB.updateTriMesh(comm)
 
         return
 
@@ -3438,7 +3517,8 @@ class CompIntersection(Intersection):
                 self.distFeature = {}
 
             remeshedCurves = np.zeros((0, 3), dtype=self.dtype)
-            remeshedCurveConn = np.zeros((0, 2), dtype="int32")
+            remeshedCurveConnFull = np.zeros((0, 2), dtype="int32")
+            remeshedCurveConnWarp = np.zeros((0, 2), dtype="int32")
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
@@ -3571,9 +3651,16 @@ class CompIntersection(Intersection):
                 # increment the connectivitiy data
                 newBarsConn += len(remeshedCurves)
 
-                # append this new curve to the featureCurve data
+                # Append this new curve to the featureCurve data.
                 remeshedCurves = np.vstack((remeshedCurves, newCoor))
-                remeshedCurveConn = np.vstack((remeshedCurveConn, newBarsConn))
+
+                # By excluding sliding curves here in the 'warp' array,
+                # they are not used as seeds for the curved-based deformation.
+                # This means that points on these curves get warped like any other point.
+                # We also still want the 'full' connectivity because that is used for projections.
+                remeshedCurveConnFull = np.vstack((remeshedCurveConnFull, newBarsConn))
+                if curveName not in self.slidingCurves:
+                    remeshedCurveConnWarp = np.vstack((remeshedCurveConnWarp, newBarsConn))
 
                 # number of new nodes added in the opposite direction
                 nNewNodesReverse = 0
@@ -3606,7 +3693,10 @@ class CompIntersection(Intersection):
                     newBarsConn = newBarsConn + len(remeshedCurves)
 
                     remeshedCurves = np.vstack((remeshedCurves, newCoor))
-                    remeshedCurveConn = np.vstack((remeshedCurveConn, newBarsConn))
+                    remeshedCurveConnFull = np.vstack((remeshedCurveConnFull, newBarsConn))
+
+                    if curveName not in self.slidingCurves:
+                        remeshedCurveConnWarp = np.vstack((remeshedCurveConnWarp, newBarsConn))
 
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
@@ -3624,28 +3714,31 @@ class CompIntersection(Intersection):
                 if firstCall:
                     # save the beginning and end indices of these elements
                     self.seamBeg[curveName] = (
-                        len(finalConn) + len(remeshedCurveConn) - (nNewNodes + nNewNodesReverse) + 2
+                        len(finalConn) + len(remeshedCurveConnFull) - (nNewNodes + nNewNodesReverse) + 2
                     )
-                    self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConn)
+                    self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConnFull)
 
             # Output the feature curves
             if self.comm.rank == 0 and self.debug:
                 curvename = f"featureCurves_{self.counter}"
-                tecplot_interface.writeTecplotFEdata(remeshedCurves, remeshedCurveConn, curvename, curvename)
+                tecplot_interface.writeTecplotFEdata(remeshedCurves, remeshedCurveConnFull, curvename, curvename)
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
             # which now contains the intersection, and re-meshed feature curves
 
             # increment the conn from curves
-            remeshedCurveConn += len(seam)
+            remeshedCurveConnFull += len(seam)
+            remeshedCurveConnWarp += len(seam)
             # stack the nodes
             seam = np.vstack((seam, remeshedCurves))
             # stack the conn
-            finalConn = np.vstack((finalConn, remeshedCurveConn))
+            finalConnFull = np.vstack((finalConn, remeshedCurveConnFull))
+            finalConnWarp = np.vstack((finalConn, remeshedCurveConnWarp))
 
         # save the connectivity
-        self.seamConn = finalConn
+        self.seamConnFull = finalConnFull
+        self.seamConnWarp = finalConnWarp
 
         self.counter += 1
 
@@ -3905,6 +3998,17 @@ class CompIntersection(Intersection):
             coorAb[ii] += cAb.T
             coorBb[ii] += cBb.T
 
+        # Allreduce the derivative seeds
+        coorAb = self.comm.allreduce(coorAb)
+        coorBb = self.comm.allreduce(coorBb)
+
+        # Extract the entries of coorAb and coorBb that are for points on this processor
+        disp = self.compA.triMeshData["disp"]
+        coorAb = coorAb[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
+
+        disp = self.compB.triMeshData["disp"]
+        coorBb = coorBb[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
+
         # get the total sensitivities from both components
         compSens_local = {}
         compSensA = self.compA.DVGeo.totalSensitivity(coorAb, "triMesh")
@@ -3940,13 +4044,14 @@ class CompIntersection(Intersection):
             raise Error(f"Surface {surface} was not found in {self.compA.name} or {self.compB.name}.")
 
         # Identify the points that are within the given tolerance from this surface
-        # surfaceInd contains indices of the provided points not the entire point set
+        # surfaceIndMap contains indices of the provided points, not the entire point set
+        # These get mapped to indices for the entire point set later
         surfaceDist = np.sqrt(np.array(projDict["dist2"]))
-        surfaceInd = [ind for ind, value in enumerate(surfaceDist) if (value < surfaceEps)]
+        surfaceIndMap = [ind for ind, value in enumerate(surfaceDist) if (value < surfaceEps)]
 
         # Output the points associated with this surface
         if self.debug:
-            data = [np.append(points[i], surfaceDist[i]) for i in surfaceInd]
+            data = [np.append(points[i], surfaceDist[i]) for i in surfaceIndMap]
             tecplot_interface.write_tecplot_scatter(
                 f"{surface}_points_{self.comm.rank}.plt",
                 f"{surface}",
@@ -3955,8 +4060,8 @@ class CompIntersection(Intersection):
             )
 
         # Save the indices only if there is at least one point
-        if surfaceInd:
-            self.projData[ptSetName][comp]["surfaceInd"][surface] = surfaceInd
+        if surfaceIndMap:
+            self.projData[ptSetName][comp]["surfaceIndMapDict"][surface] = surfaceIndMap
             # Initialize a data dictionary for this surface
             self.projData[ptSetName][surface] = {}
 
