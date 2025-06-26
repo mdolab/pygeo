@@ -6,7 +6,7 @@ File IO
     :members:
 
 Mesh Generation
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 .. automodule:: pygeo.geo_utils.mesh_generation
     :members:
 
