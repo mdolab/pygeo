@@ -208,7 +208,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             first call to the `compute` method.
         DVGeoName : str, optional
             The name of the DVGeo to add the points to, necessary if there are multiple DVGeo objects. By default `None`.
-        **kwargs
+        \*\*kwargs
             Any additional keyword arguments to pass to the `addPointSet` method of the DVGeo object.
         """
         self.omPtInOutDict[discipline.COORDINATES_INPUT] = discipline.COORDINATES_OUTPUT

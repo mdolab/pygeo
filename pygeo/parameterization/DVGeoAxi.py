@@ -213,7 +213,7 @@ class DVGeometryAxi(DVGeometry):
             isComplex = kwargs.pop("complex")
             warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
-        super().__init__(fileName, isComplex=isComplex, child=child, *args, **kwargs)
+        super().__init__(fileName, *args, isComplex=isComplex, child=child, **kwargs)
 
         self.center = center
         self.collapse_into = collapse_into
