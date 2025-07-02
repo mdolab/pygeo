@@ -211,17 +211,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         \*\*kwargs
             Any additional keyword arguments to pass to the `addPointSet` method of the DVGeo object.
         """
-        self.omPtInOutDict[discipline.COORDINATES_INPUT] = discipline.COORDINATES_OUTPUT
+        inputName = discipline.COORDINATES_INPUT
+        outputName = discipline.COORDINATES_OUTPUT
+        self.omPtInOutDict[inputName] = outputName
         if points is None:
             # no pointset info is provided, just do a generic i/o. We will add these points during the first compute
-            self.add_input(discipline.COORDINATES_INPUT, distributed=True, shape_by_conn=True)
-            self.add_output(discipline.COORDINATES_OUTPUT, distributed=True, copy_shape=discipline.COORDINATES_INPUT)
+            self.add_input(inputName, distributed=True, shape_by_conn=True)
+            self.add_output(outputName, distributed=True, copy_shape=inputName)
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, discipline.COORDINATES_OUTPUT, add_output=False, DVGeoName=DVGeoName, **kwargs)
-            self.add_input(discipline.COORDINATES_INPUT, distributed=True, val=points.flatten())
-            self.add_output(discipline.COORDINATES_OUTPUT, distributed=True, val=points.flatten())
+            self.nom_addPointSet(points, outputName, add_output=False, DVGeoName=DVGeoName, **kwargs)
+            self.add_input(inputName, distributed=True, val=points.flatten())
+            self.add_output(outputName, distributed=True, val=points.flatten())
 
     def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
