@@ -40,14 +40,14 @@ def createMidsurfaceMesh(
         Index specifying which direction lift is in (same as the ADflow option). 1/2/3 for x/y/z-axis. This is used to
         determine the projection direction.
 
-    chord_cos_spacing : float
-        Cosine spacing factor for the chordwise points. 0.0 is uniform, 1.0 is cosine spacing.
+    chord_cos_spacing : float, optional
+        Cosine spacing factor for the chordwise points. 0.0 is uniform, 1.0 is cosine spacing, by default 0.0.
 
-    spanOffset : float
+    spanOffset : float, optional
         Point projection often fails if attempted at the exact wing root and tip, this offset shifts the points at the
         wing root/tip inward slightly to avoid this, before shifting them back to the correct location after projection.
         The value of the offset is how far to shift the points as a fraction of the distance between the first and
-        second leading/trailing edge points at each end of the wing.
+        second leading/trailing edge points at each end of the wing. By default, 1e-5.
 
     Returns
     -------
