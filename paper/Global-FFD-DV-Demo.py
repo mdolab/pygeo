@@ -42,7 +42,7 @@ DVGeo.addGlobalDV(dvName="taper", value=[1] * 2, func=taper, lower=0.5, upper=1.
 # Comment out one or the other
 DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
-dvDict = DVGeo.getValues()
+dvDict = DVGeo.getDesignVars()
 dvDictCopy = copy.deepcopy(dvDict)
 dvDictCopy["twist"] = np.linspace(0, 50, nRefAxPts)[1:]
 DVGeo.setDesignVars(dvDictCopy)

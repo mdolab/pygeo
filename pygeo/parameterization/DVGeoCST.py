@@ -548,7 +548,7 @@ class DVGeometryCST(BaseDVGeometry):
         for pointSet in self.updated:
             self.updated[pointSet] = False
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
         Values are returned in a dictionary format that would be suitable for a subsequent call to setValues()

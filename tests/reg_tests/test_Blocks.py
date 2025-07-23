@@ -85,7 +85,7 @@ class RegTestPyGeo(unittest.TestCase):
         handler.root_add_val("pointvals", Xnew, rtol=1e-12, atol=1e-12, msg="Updated points")
         # Need to get design variables so that we can reset the Jacobians
         # for each call
-        x = DVGeo.getValues()
+        x = DVGeo.getDesignVars()
 
         # Calculate Jacobians
         DVGeo.setDesignVars(x)
@@ -192,7 +192,7 @@ class RegTestPyGeo(unittest.TestCase):
             add_vars(tiny, "tiny", rotate="y", slocal=True)
 
             # Modify design variables
-            x = big.getValues()
+            x = big.getDesignVars()
             x["rotate_y_small"] = 10
             x["rotate_y_tiny"] = -20
             np.random.seed(11)
@@ -219,7 +219,7 @@ class RegTestPyGeo(unittest.TestCase):
             add_vars(tiny, "tiny", translate=True)
 
             # Modify design variables
-            x = big.getValues()
+            x = big.getDesignVars()
             np.random.seed(11)
             x["translate_big"] = np.random.random(3)
             x["translate_small"] = np.random.random(3)
@@ -250,7 +250,7 @@ class RegTestPyGeo(unittest.TestCase):
             add_vars(tiny, "tiny", rotate="y")
 
             # Modify design variables
-            x = big.getValues()
+            x = big.getDesignVars()
             np.random.seed(11)
             x["translate_big"] = np.random.random(3)
             x["rotate_y_small"] = 45

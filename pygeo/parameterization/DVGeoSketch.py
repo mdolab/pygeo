@@ -121,13 +121,13 @@ class DVGeoSketch(BaseDVGeometry):
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet
-        values = u.T @ self.convertDictToSensitivity(self.getValues())
+        values = u.T @ self.convertDictToSensitivity(self.getDesignVars())
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
 
         self.useComposite = True
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format

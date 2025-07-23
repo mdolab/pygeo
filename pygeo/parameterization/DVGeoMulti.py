@@ -523,7 +523,7 @@ class DVGeometryMulti:
         for pointSet in self.updated:
             self.updated[pointSet] = False
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
         Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars().
@@ -538,7 +538,7 @@ class DVGeometryMulti:
         dvDict = {}
         # we need to loop over each DVGeo object and get the DVs
         for comp in self.compNames:
-            dvDictComp = self.comps[comp].DVGeo.getValues()
+            dvDictComp = self.comps[comp].DVGeo.getDesignVars()
             # we need to loop over these DVs
             for k, v in dvDictComp.items():
                 dvDict[k] = v

@@ -1526,7 +1526,7 @@ class DVGeometry(BaseDVGeometry):
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet
-        values = u.T @ self.convertDictToSensitivity(self.getValues())
+        values = u.T @ self.convertDictToSensitivity(self.getDesignVars())
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
         self.useComposite = True
@@ -1826,7 +1826,7 @@ class DVGeometry(BaseDVGeometry):
         for name in ptSetNames:
             self.JT[name] = None  # J is no longer up to date
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format
@@ -1854,11 +1854,11 @@ class DVGeometry(BaseDVGeometry):
         for key in self.DV_listSpanwiseLocal:
             dvDict[key] = self.DV_listSpanwiseLocal[key].value
 
-        # Now call getValues on the children. This way the
+        # Now call getDesignVars on the children. This way the
         # returned dictionary will include the variables from
         # the children
         for child in self.children.values():
-            childdvDict = child.getValues()
+            childdvDict = child.getDesignVars()
             dvDict.update(childdvDict)
 
         if self.useComposite:
@@ -3263,7 +3263,7 @@ class DVGeometry(BaseDVGeometry):
             os.makedirs(f"{directory}/surf", exist_ok=True)
 
         # Get design variables
-        dvDict = self.getValues()
+        dvDict = self.getDesignVars()
 
         # Loop through design variables on self and children
         geoList = self.getFlattenedChildren()

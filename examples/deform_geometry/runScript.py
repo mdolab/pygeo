@@ -2,6 +2,7 @@
 This script demonstrates the deformation of a geometry object using FFD and
 the process for exporting the geometry as a tecplot or IGES file.
 """
+
 # Standard Python modules
 import argparse
 
@@ -110,7 +111,7 @@ def deform_DVGeo(geo):
     DVGeo.addGlobalDV(dvName="twist", value=[0] * nRefAxPts, func=twist, lower=-10, upper=10, scale=1.0)
 
     # Get Design Variables
-    dvDict = DVGeo.getValues()
+    dvDict = DVGeo.getDesignVars()
 
     # Set First Twist Section to 5deg
     dvDict["twist"][0] = 5
