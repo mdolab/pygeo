@@ -49,7 +49,7 @@ def evalFunctionsSensFD(DVGeo, DVCon, fdstep=1e-2):
         else:
             outdims[key] = 1
 
-    xDV = DVGeo.getValues()
+    xDV = DVGeo.getDesignVars()
     indims = {}
     for key in xDV.keys():
         val = xDV[key]
@@ -96,7 +96,7 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
         handler.root_add_dict("derivs_base", funcsSens, rtol=1e-6, atol=1e-6)
         funcsSensFD = evalFunctionsSensFD(DVGeo, DVCon, fdstep=fdstep)
         for outkey in funcs.keys():
-            for inkey in DVGeo.getValues().keys():
+            for inkey in DVGeo.getDesignVars().keys():
                 try:
                     analytic = funcsSens[outkey][inkey]
                     fd = funcsSensFD[outkey][inkey]
@@ -245,7 +245,7 @@ class RegTestPyGeo(unittest.TestCase):
         funcs = {}
         funcsSens = {}
         # change the DVs
-        xDV = DVGeo.getValues()
+        xDV = DVGeo.getDesignVars()
         xDV["twist"] = np.linspace(0, 10, len(xDV["twist"]))
         if self.child:
             # Twist needs to be set on the parent FFD to get accurate derivatives
@@ -265,7 +265,7 @@ class RegTestPyGeo(unittest.TestCase):
     def wing_test_deformed(self, DVGeo, DVCon, handler):
         funcs = {}
         funcsSens = {}
-        xDV = DVGeo.getValues()
+        xDV = DVGeo.getDesignVars()
         rng = np.random.default_rng(37)
         xDV["local"] = rng.normal(0.0, 0.05, len(xDV["local"]))
         DVGeo.setDesignVars(xDV)
@@ -946,7 +946,7 @@ class RegTestPyGeo(unittest.TestCase):
             funcs = {}
             funcsSens = {}
             # change the DVs arbitrarily
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             xDV["twist"][0] = 1.0
             xDV["twist"][1] = -3.5
             xDV["twist"][2] = -2.5
@@ -1307,7 +1307,7 @@ class RegTestGeograd(unittest.TestCase):
             funcsSensFD = evalFunctionsSensFD(DVGeo1, DVCon, fdstep=1e-3)
             at_least_one_var = False
             for outkey in funcs.keys():
-                for inkey in DVGeo1.getValues().keys():
+                for inkey in DVGeo1.getDesignVars().keys():
                     analytic = funcsSens[outkey][inkey]
                     fd = funcsSensFD[outkey][inkey]
                     handler.assert_allclose(analytic, fd, name="finite_diff_check", rtol=1e-3, atol=1e-3)
@@ -1320,7 +1320,7 @@ class RegTestGeograd(unittest.TestCase):
             funcsSensFD = evalFunctionsSensFD(DVGeo2, DVCon, fdstep=1e-3)
             at_least_one_var = False
             for outkey in funcs.keys():
-                for inkey in DVGeo2.getValues().keys():
+                for inkey in DVGeo2.getDesignVars().keys():
                     analytic = funcsSens[outkey][inkey]
                     fd = funcsSensFD[outkey][inkey]
                     handler.assert_allclose(analytic, fd, name="finite_diff_check", rtol=1e-3, atol=1e-3)

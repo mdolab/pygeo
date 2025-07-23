@@ -65,11 +65,17 @@ class BaseDVGeometry(ABC):
         """
         pass
 
-    @abstractmethod
     def getValues(self):
+        DeprecationWarning(
+            "getValues() is deprecated and will be removed in pyGeo version 1.18. Use getDesignVars() instead. "
+        )
+        return self.getDesignVars()
+
+    @abstractmethod
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
-        Values are returned in a dictionary format that would be suitable for a subsequent call to setValues()
+        Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars()
 
         Returns
         -------
