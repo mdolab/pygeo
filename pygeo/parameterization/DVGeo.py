@@ -1857,6 +1857,39 @@ class DVGeometry(BaseDVGeometry):
 
         return dvDict
 
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds. The keys are the design variable names and the values are the lower bounds.
+        upperBounds : dict
+            Dictionary of design variable upper bounds. The keys are the design variable names and the values are
+        """
+        lowerBounds = {}
+        upperBounds = {}
+
+        for varList in self.varLists.values():
+            for dvName, dv in varList.items():
+                lowerBounds[dvName] = dv.lower.real
+                upperBounds[dvName] = dv.upper.real
+
+        # Get the bounds from the children
+        for child in self.children.values():
+            childLower, childUpper = child.getDVBounds()
+            lowerBounds.update(childLower)
+            upperBounds.update(childUpper)
+
+        # If we are using composite DVs, we need to convert the bounds
+        # to the composite space
+        if self.useComposite:
+            lowerBounds = self.mapXDictToComp(lowerBounds)
+            upperBounds = self.mapXDictToComp(upperBounds)
+
+        return lowerBounds, upperBounds
+
     def extractCoef(self, axisID):
         """Extract the coefficients for the selected reference
         axis. This should be used only inside design variable functions"""

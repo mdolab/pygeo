@@ -147,6 +147,29 @@ class DVGeoSketch(BaseDVGeometry):
 
         return dvDict
 
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = OrderedDict()
+        upperBounds = OrderedDict()
+        for dvName in self.DVs:
+            lowerBounds[dvName] = self.DVs[dvName].lower
+            upperBounds[dvName] = self.DVs[dvName].upper
+
+        if self.useComposite:
+            lowerBounds = self.mapXDictToComp(lowerBounds)
+            upperBounds = self.mapXDictToComp(upperBounds)
+
+        return lowerBounds, upperBounds
+
     def getVarNames(self, pyOptSparse=False):
         """
         Return a list of the design variable names. This is typically

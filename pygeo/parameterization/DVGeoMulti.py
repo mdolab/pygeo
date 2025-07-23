@@ -545,6 +545,27 @@ class DVGeometryMulti:
 
         return dvDict
 
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = {}
+        upperBounds = {}
+        # we need to loop over each DVGeo object and get the DVs
+        for comp in self.compNames:
+            lowerBoundsComp, upperBoundsComp = self.comps[comp].DVGeo.getDVBounds()
+            lowerBounds.update(lowerBoundsComp)
+            upperBounds.update(upperBoundsComp)
+
+        return lowerBounds, upperBounds
+
     def update(self, ptSetName, config=None):
         """
         This is the main routine for returning coordinates that have been updated by design variables.

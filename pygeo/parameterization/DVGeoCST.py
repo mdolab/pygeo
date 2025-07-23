@@ -565,6 +565,24 @@ class DVGeometryCST(BaseDVGeometry):
 
         return DVs
 
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = {}
+        upperBounds = {}
+        for dvName, dv in self.DVs.items():
+            lowerBounds[dvName] = dv.lower
+            upperBounds[dvName] = dv.upper
+        return lowerBounds, upperBounds
+
     def getVarNames(self, **kwargs):
         """
         Return a list of the design variable names. This is typically used when specifying a wrt= argument for pyOptSparse.

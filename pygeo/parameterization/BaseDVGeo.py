@@ -85,6 +85,20 @@ class BaseDVGeometry(ABC):
         pass
 
     @abstractmethod
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds. The keys are the design variable names and the values are the lower bounds.
+        upperBounds : dict
+            Dictionary of design variable upper bounds. The keys are the design variable names and the values are
+        """
+        pass
+
+    @abstractmethod
     def getVarNames(self):
         """
         Return a list of the design variable names. This is typically used when specifying a wrt= argument for pyOptSparse.
