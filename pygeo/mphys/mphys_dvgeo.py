@@ -552,7 +552,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # call the dvgeo object and add this dv
         DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, prependName=False, **kwargs)
-        val = DVGeo.getValues()
+        val = DVGeo.getDesignVars()
 
         # define the input
         self.add_input(dvName, distributed=False, shape=DVGeo.getNDV(), val=val[dvName][0])
