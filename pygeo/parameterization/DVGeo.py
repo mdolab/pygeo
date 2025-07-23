@@ -273,6 +273,17 @@ class DVGeometry(BaseDVGeometry):
                             tmp[ind] = True
         self.masks = tmp
 
+    @property
+    def varLists(self):
+        return OrderedDict(
+            [
+                ("globalVars", self.DV_listGlobal),
+                ("localVars", self.DV_listLocal),
+                ("sectionlocalVars", self.DV_listSectionLocal),
+                ("spanwiselocalVars", self.DV_listSpanwiseLocal),
+            ]
+        )
+
     def addRefAxis(
         self,
         name,
@@ -1779,25 +1790,11 @@ class DVGeometry(BaseDVGeometry):
                 )
 
         for key in dvDict:
-            if key in self.DV_listGlobal:
-                vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                _checkArrLength(key, len(vals_to_set), self.DV_listGlobal[key].nVal)
-                self.DV_listGlobal[key].value = vals_to_set
-
-            if key in self.DV_listLocal:
-                vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                _checkArrLength(key, len(vals_to_set), self.DV_listLocal[key].nVal)
-                self.DV_listLocal[key].value = vals_to_set
-
-            if key in self.DV_listSectionLocal:
-                vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                _checkArrLength(key, len(vals_to_set), self.DV_listSectionLocal[key].nVal)
-                self.DV_listSectionLocal[key].value = vals_to_set
-
-            if key in self.DV_listSpanwiseLocal:
-                vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                _checkArrLength(key, len(vals_to_set), self.DV_listSpanwiseLocal[key].nVal)
-                self.DV_listSpanwiseLocal[key].value = vals_to_set
+            for varList in self.varLists.values():
+                if key in varList:
+                    vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
+                    _checkArrLength(key, len(vals_to_set), varList[key].nVal)
+                    varList[key].value = vals_to_set
 
             # Jacobians are, in general, no longer up to date
             self.zeroJacobians(self.ptSetNames)
@@ -1839,20 +1836,9 @@ class DVGeometry(BaseDVGeometry):
         """
 
         dvDict = {}
-        for key in self.DV_listGlobal:
-            dvDict[key] = self.DV_listGlobal[key].value
-
-        # and now the local DVs
-        for key in self.DV_listLocal:
-            dvDict[key] = self.DV_listLocal[key].value
-
-        # and now the section local DVs
-        for key in self.DV_listSectionLocal:
-            dvDict[key] = self.DV_listSectionLocal[key].value
-
-        # and now the Spanwise local DVs
-        for key in self.DV_listSpanwiseLocal:
-            dvDict[key] = self.DV_listSpanwiseLocal[key].value
+        for varList in self.varLists.values():
+            for dvName, dv in varList.items():
+                dvDict[dvName] = dv.value
 
         # Now call getDesignVars on the children. This way the
         # returned dictionary will include the variables from
@@ -2249,41 +2235,14 @@ class DVGeometry(BaseDVGeometry):
 
         i = DVCountGlobal
         dIdxDict = {}
-        for key in self.DV_listGlobal:
-            dv = self.DV_listGlobal[key]
-            if out1D:
-                dIdxDict[dv.name] = np.ravel(dIdx[:, i : i + dv.nVal])
-            else:
-                dIdxDict[dv.name] = dIdx[:, i : i + dv.nVal]
-            i += dv.nVal
 
-        i = DVCountSpanLoc
-        for key in self.DV_listSpanwiseLocal:
-            dv = self.DV_listSpanwiseLocal[key]
-            if out1D:
-                dIdxDict[dv.name] = np.ravel(dIdx[:, i : i + dv.nVal])
-            else:
-                dIdxDict[dv.name] = dIdx[:, i : i + dv.nVal]
-            i += dv.nVal
-
-        i = DVCountSecLoc
-        for key in self.DV_listSectionLocal:
-            dv = self.DV_listSectionLocal[key]
-            if out1D:
-                dIdxDict[dv.name] = np.ravel(dIdx[:, i : i + dv.nVal])
-            else:
-                dIdxDict[dv.name] = dIdx[:, i : i + dv.nVal]
-            i += dv.nVal
-
-        i = DVCountLocal
-        for key in self.DV_listLocal:
-            dv = self.DV_listLocal[key]
-            if out1D:
-                dIdxDict[dv.name] = np.ravel(dIdx[:, i : i + dv.nVal])
-            else:
-                dIdxDict[dv.name] = dIdx[:, i : i + dv.nVal]
-
-            i += dv.nVal
+        for dvList in self.varLists.values():
+            for dv in dvList.values():
+                if out1D:
+                    dIdxDict[dv.name] = np.ravel(dIdx[:, i : i + dv.nVal])
+                else:
+                    dIdxDict[dv.name] = dIdx[:, i : i + dv.nVal]
+                i += dv.nVal
 
         # Add in child portion
         for child in self.children.values():
@@ -2538,7 +2497,7 @@ class DVGeometry(BaseDVGeometry):
             xsdot = np.zeros((0, 3))
         else:
             xsdot = self.JT[ptSetName].T.dot(newvec)
-            xsdot.reshape(len(xsdot) // 3, 3)
+            xsdot = xsdot.reshape(-1, 3)
 
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coordXfer:
@@ -2914,14 +2873,7 @@ class DVGeometry(BaseDVGeometry):
             freezeVars = set()
 
         # Add design variables from the master:
-        varLists = OrderedDict(
-            [
-                ("globalVars", self.DV_listGlobal),
-                ("localVars", self.DV_listLocal),
-                ("sectionlocalVars", self.DV_listSectionLocal),
-                ("spanwiselocalVars", self.DV_listSpanwiseLocal),
-            ]
-        )
+        varLists = self.varLists
 
         # we add the composite DVs, and construct linear constraints that replace the existing bounds
         # then we simply return without adding any of the other DVs
