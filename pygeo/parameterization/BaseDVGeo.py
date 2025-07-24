@@ -436,13 +436,11 @@ class BaseDVGeometry(ABC):
 
         def computePointCoords(x):
             """Compute the coordinates of the pointset given the design variables."""
-            # Set the design variables
             self.setDesignVars(self.convertSensitivityToDict(x.reshape(1, -1), out1D=True))
-            # Update the pointset
             return self.update(ptSetName).reshape(-1, 3)
 
         def computeCoordinateResiduals(x):
-            """Compute the residuals in terms of the coordinates."""
+            """Compute the residuals, simply the difference in the two sets of coordinates."""
             updatedPoints = computePointCoords(x)
             if callback is not None:
                 callback(self, ptSetName, iteration_counter[0])
@@ -450,7 +448,14 @@ class BaseDVGeometry(ABC):
             return (updatedPoints - newPointCoords).flatten()
 
         def computeCoordinateJacobian(x):
-            """Compute the Jacobian of the coordinates."""
+            """Compute the Jacobian of the residual.
+
+            Since the residual is simply xNew - xRef, the Jacobian is just the sensitivity of the point coordinates
+            with respect to the design variables.
+
+            There is no method common to all DVGeo classes to compute the full Jacobian, so we compute it using forward
+            Jacobian vector products, seeding each design variable in turn to get one column of the Jacobian at a time.
+            """
 
             # Create a seed vector for the design variables
             numDVs = self.getNDV()
@@ -465,6 +470,7 @@ class BaseDVGeometry(ABC):
                     self.convertSensitivityToDict(seed.reshape(1, -1)), ptSetName
                 ).flatten()
 
+                # Store the non-zero entires of this column of the Jacobian
                 nonZeroInd = np.nonzero(coordSens)[0]
                 numNonZero = nonZeroInd.size
                 if numNonZero > 0:
