@@ -1890,6 +1890,16 @@ class DVGeometry(BaseDVGeometry):
 
         return lowerBounds, upperBounds
 
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        return self.points[ptSetName]
+
     def extractCoef(self, axisID):
         """Extract the coefficients for the selected reference
         axis. This should be used only inside design variable functions"""

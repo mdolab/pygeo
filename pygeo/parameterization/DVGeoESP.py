@@ -695,6 +695,16 @@ class DVGeometryESP(DVGeoSketch):
 
         return newPts
 
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        return self.pointSets[ptSetName].points
+
     def writeCSMFile(self, fileName):
         """
         Writes the current state of design variables in the ESP model to a CSM file.

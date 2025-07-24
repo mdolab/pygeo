@@ -613,6 +613,16 @@ class DVGeometryMulti:
 
         return newPts
 
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        return self.points[ptSetName].points
+
     def pointSetUpToDate(self, ptSetName):
         """
         This is used externally to query if the object needs to update its point set or not.
