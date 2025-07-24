@@ -346,7 +346,7 @@ class BaseDVGeometry(ABC):
             A user-supplied function to be called at each iteration. The function is called as ``callback(self, ptSetName, iteration)``
             where ``self`` is the DVGeo object being fit, ``ptSetName`` is the name of the pointset being fit, and
             ``iteration`` is the current iteration number.
-        **kwargs :
+        \*\*kwargs :
             Additional keyword arguments to be passed to scipy's least squares function.
 
         Returns
@@ -406,7 +406,7 @@ class BaseDVGeometry(ABC):
             A user-supplied function to be called at each iteration. The function is called as ``callback(self, ptSetName, iteration)``
             where ``self`` is the DVGeo object being fit, ``ptSetName`` is the name of the pointset being fit, and
             ``iteration`` is the current iteration number.
-        **kwargs :
+        \*\*kwargs :
             Additional keyword arguments to be passed to scipy's `least_squares` function.
 
         Returns
