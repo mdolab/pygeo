@@ -2325,31 +2325,15 @@ class DVGeometry(BaseDVGeometry):
         dIdx : array
            Flattened array of length getNDV().
         """
-        DVCountGlobal, DVCountLocal, DVCountSecLoc, DVCountSpanLoc = self._getDVOffsets()
+        DVOffsets = self._getDVOffsets()
         dIdx = np.zeros(self.nDV_T, self.dtype)
-        i = DVCountGlobal
-        for key in self.DV_listGlobal:
-            dv = self.DV_listGlobal[key]
-            dIdx[i : i + dv.nVal] = dIdxDict[dv.name]
-            i += dv.nVal
 
-        i = DVCountLocal
-        for key in self.DV_listLocal:
-            dv = self.DV_listLocal[key]
-            dIdx[i : i + dv.nVal] = dIdxDict[dv.name]
-            i += dv.nVal
-
-        i = DVCountSecLoc
-        for key in self.DV_listSectionLocal:
-            dv = self.DV_listSectionLocal[key]
-            dIdx[i : i + dv.nVal] = dIdxDict[dv.name]
-            i += dv.nVal
-
-        i = DVCountSpanLoc
-        for key in self.DV_listSpanwiseLocal:
-            dv = self.DV_listSpanwiseLocal[key]
-            dIdx[i : i + dv.nVal] = dIdxDict[dv.name]
-            i += dv.nVal
+        for dvList, dvOffset in zip(self.varLists.values(), DVOffsets):
+            i = dvOffset
+            for key in dvList:
+                dv = self.DV_listGlobal[key]
+                dIdx[i : i + dv.nVal] = dIdxDict[dv.name]
+                i += dv.nVal
 
         # Note: not sure if this works with (multiple) sibling child FFDs
         for child in self.children.values():
@@ -2782,6 +2766,7 @@ class DVGeometry(BaseDVGeometry):
 
         self.JT[ptSetName] = np.zeros([self.nDV_T, self.nPts[ptSetName]])
         self._complexifyCoef()
+
         for key in self.DV_listGlobal:
             for j in range(self.DV_listGlobal[key].nVal):
                 if self.isChild:
@@ -3968,88 +3953,32 @@ class DVGeometry(BaseDVGeometry):
         for child in self.children.values():
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
-        DVGlobalCount, DVLocalCount, DVSecLocCount, DVSpanLocCount = self._getDVOffsets()
+        DVOffsets = self._getDVOffsets()
 
         h = 1e-6
 
         self.JT[ptSetName] = np.zeros([self.nDV_T, self.nPts[ptSetName]])
 
-        for key in self.DV_listGlobal:
-            for j in range(self.DV_listGlobal[key].nVal):
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = refCoef.copy()
-                    self.refAxis._updateCurveCoef()
+        for dvList, offset in zip(self.varLists.values(), DVOffsets):
+            for key in dvList:
+                for j in range(dvList[key].nVal):
+                    if self.isChild:
+                        self.FFD.coef = refFFDCoef.copy()
+                        self.coef = refCoef.copy()
+                        self.refAxis.coef = refCoef.copy()
+                        self.refAxis._updateCurveCoef()
 
-                refVal = self.DV_listGlobal[key].value[j]
+                    refVal = dvList[key].value[j]
 
-                self.DV_listGlobal[key].value[j] += h
+                    dvList[key].value[j] += h
 
-                coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
+                    coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
 
-                deriv = (coordsph - coords0) / h
-                self.JT[ptSetName][DVGlobalCount, :] = deriv
+                    deriv = (coordsph - coords0) / h
+                    self.JT[ptSetName][offset, :] = deriv
 
-                DVGlobalCount += 1
-                self.DV_listGlobal[key].value[j] = refVal
-
-        for key in self.DV_listSpanwiseLocal:
-            for j in range(self.DV_listSpanwiseLocal[key].nVal):
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = refCoef.copy()
-                    self.refAxis._updateCurveCoef()
-
-                refVal = self.DV_listSpanwiseLocal[key].value[j]
-
-                self.DV_listSpanwiseLocal[key].value[j] += h
-                coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
-
-                deriv = (coordsph - coords0) / h
-                self.JT[ptSetName][DVSpanLocCount, :] = deriv
-
-                DVSpanLocCount += 1
-                self.DV_listSpanwiseLocal[key].value[j] = refVal
-
-        for key in self.DV_listSectionLocal:
-            for j in range(self.DV_listSectionLocal[key].nVal):
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = refCoef.copy()
-                    self.refAxis._updateCurveCoef()
-
-                refVal = self.DV_listSectionLocal[key].value[j]
-
-                self.DV_listSectionLocal[key].value[j] += h
-                coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
-
-                deriv = (coordsph - coords0) / h
-                self.JT[ptSetName][DVSecLocCount, :] = deriv
-
-                DVSecLocCount += 1
-                self.DV_listSectionLocal[key].value[j] = refVal
-
-        for key in self.DV_listLocal:
-            for j in range(self.DV_listLocal[key].nVal):
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = refCoef.copy()
-                    self.refAxis._updateCurveCoef()
-
-                refVal = self.DV_listLocal[key].value[j]
-
-                self.DV_listLocal[key].value[j] += h
-                coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
-
-                deriv = (coordsph - coords0) / h
-                self.JT[ptSetName][DVLocalCount, :] = deriv
-
-                DVLocalCount += 1
-                self.DV_listLocal[key].value[j] = refVal
+                    offset += 1
+                    dvList[key].value[j] = refVal
 
         for childName, child in self.children.items():
             child._finalize()
@@ -4600,124 +4529,38 @@ class DVGeometry(BaseDVGeometry):
         h = 1e-6
 
         # figure out the split between local and global Variables
-        DVCountGlob, DVCountLoc, DVCountSecLoc, DVCountSpanLoc = self._getDVOffsets()
+        dvOffsets = self._getDVOffsets()
 
-        for key in self.DV_listGlobal:
-            for j in range(self.DV_listGlobal[key].nVal):
-                print("========================================")
-                print("      GlobalVar(%s), Value(%d)" % (key, j))
-                print("========================================")
+        for (dvType, dvList), dvOffset in zip(self.varLists.items(), dvOffsets):
+            for key in dvList:
+                for j in range(dvList[key].nVal):
+                    print("========================================")
+                    print(f"      {dvType.capitalize()}({key}), Value({j})")
+                    print("========================================")
 
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = self.coef.copy()
-                    self.refAxis._updateCurveCoef()
+                    if self.isChild:
+                        self.FFD.coef = refFFDCoef.copy()
+                        self.coef = refCoef.copy()
+                        self.refAxis.coef = self.coef.copy()
+                        self.refAxis._updateCurveCoef()
 
-                refVal = self.DV_listGlobal[key].value[j]
+                    refVal = dvList[key].value[j]
 
-                self.DV_listGlobal[key].value[j] += h
+                    dvList[key].value[j] += h
 
-                coordsph = self.update(ptSetName).flatten()
+                    coordsph = self.update(ptSetName).flatten()
 
-                deriv = (coordsph - coords0) / h
+                    deriv = (coordsph - coords0) / h
 
-                for ii in range(len(deriv)):
-                    relErr = (deriv[ii] - Jac[DVCountGlob, ii]) / (1e-16 + Jac[DVCountGlob, ii])
-                    absErr = deriv[ii] - Jac[DVCountGlob, ii]
+                    for ii in range(len(deriv)):
+                        relErr = (deriv[ii] - Jac[dvOffset, ii]) / (1e-16 + Jac[dvOffset, ii])
+                        absErr = deriv[ii] - Jac[dvOffset, ii]
 
-                    if abs(relErr) > h * 10 and abs(absErr) > h * 10:
-                        print(ii, deriv[ii], Jac[DVCountGlob, ii], relErr, absErr)
+                        if abs(relErr) > h * 10 and abs(absErr) > h * 10:
+                            print(ii, deriv[ii], Jac[dvOffset, ii], relErr, absErr)
 
-                DVCountGlob += 1
-                self.DV_listGlobal[key].value[j] = refVal
-
-        for key in self.DV_listLocal:
-            for j in range(self.DV_listLocal[key].nVal):
-                print("========================================")
-                print("      LocalVar(%s), Value(%d)           " % (key, j))
-                print("========================================")
-
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = self.coef.copy()
-                    self.refAxis._updateCurveCoef()
-
-                refVal = self.DV_listLocal[key].value[j]
-
-                self.DV_listLocal[key].value[j] += h
-                coordsph = self.update(ptSetName).flatten()
-
-                deriv = (coordsph - coords0) / h
-
-                for ii in range(len(deriv)):
-                    relErr = (deriv[ii] - Jac[DVCountLoc, ii]) / (1e-16 + Jac[DVCountLoc, ii])
-                    absErr = deriv[ii] - Jac[DVCountLoc, ii]
-
-                    if abs(relErr) > h and abs(absErr) > h:
-                        print(ii, deriv[ii], Jac[DVCountLoc, ii], relErr, absErr)
-
-                DVCountLoc += 1
-                self.DV_listLocal[key].value[j] = refVal
-
-        for key in self.DV_listSectionLocal:
-            for j in range(self.DV_listSectionLocal[key].nVal):
-                print("========================================")
-                print("   SectionLocalVar(%s), Value(%d)       " % (key, j))
-                print("========================================")
-
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = self.coef.copy()
-                    self.refAxis._updateCurveCoef()
-
-                refVal = self.DV_listSectionLocal[key].value[j]
-
-                self.DV_listSectionLocal[key].value[j] += h
-                coordsph = self.update(ptSetName).flatten()
-
-                deriv = (coordsph - coords0) / h
-
-                for ii in range(len(deriv)):
-                    relErr = (deriv[ii] - Jac[DVCountSecLoc, ii]) / (1e-16 + Jac[DVCountSecLoc, ii])
-                    absErr = deriv[ii] - Jac[DVCountSecLoc, ii]
-
-                    if abs(relErr) > h and abs(absErr) > h:
-                        print(ii, deriv[ii], Jac[DVCountSecLoc, ii], relErr, absErr)
-
-                DVCountSecLoc += 1
-                self.DV_listSectionLocal[key].value[j] = refVal
-
-        for key in self.DV_listSpanwiseLocal:
-            for j in range(self.DV_listSpanwiseLocal[key].nVal):
-                print("========================================")
-                print("   SpanwiseLocalVar(%s), Value(%d)       " % (key, j))
-                print("========================================")
-
-                if self.isChild:
-                    self.FFD.coef = refFFDCoef.copy()
-                    self.coef = refCoef.copy()
-                    self.refAxis.coef = self.coef.copy()
-                    self.refAxis._updateCurveCoef()
-
-                refVal = self.DV_listSpanwiseLocal[key].value[j]
-
-                self.DV_listSpanwiseLocal[key].value[j] += h
-                coordsph = self.update(ptSetName).flatten()
-
-                deriv = (coordsph - coords0) / h
-
-                for ii in range(len(deriv)):
-                    relErr = (deriv[ii] - Jac[DVCountSpanLoc, ii]) / (1e-16 + Jac[DVCountSpanLoc, ii])
-                    absErr = deriv[ii] - Jac[DVCountSpanLoc, ii]
-
-                    if abs(relErr) > h and abs(absErr) > h:
-                        print(ii, deriv[ii], Jac[DVCountSpanLoc, ii], relErr, absErr)
-
-                DVCountSpanLoc += 1
-                self.DV_listSpanwiseLocal[key].value[j] = refVal
+                    dvOffset += 1
+                    dvList[key].value[j] = refVal
 
         for child in self.children.values():
             child.checkDerivatives(ptSetName)
