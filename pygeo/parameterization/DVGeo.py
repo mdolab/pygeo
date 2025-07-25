@@ -2331,7 +2331,7 @@ class DVGeometry(BaseDVGeometry):
         for dvList, dvOffset in zip(self.varLists.values(), DVOffsets):
             i = dvOffset
             for key in dvList:
-                dv = self.DV_listGlobal[key]
+                dv = dvList[key]
                 dIdx[i : i + dv.nVal] = dIdxDict[dv.name]
                 i += dv.nVal
 
@@ -2523,17 +2523,13 @@ class DVGeometry(BaseDVGeometry):
         if self.JT[ptSetName] is None:
             xsdot = np.zeros((0, 3))
         else:
-            xsdot = self.JT[ptSetName].T.dot(newvec)
-            xsdot = xsdot.reshape(-1, 3)
+            xsdot = self.JT[ptSetName].T.dot(newvec).reshape(-1, 3)
 
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coordXfer:
                 # its important to remember that dIdpt are vector-like values,
                 # so we don't apply the transformations and only the rotations!
                 xsdot = self.coordXfer[ptSetName](xsdot, mode="fwd", applyDisplacement=False)
-
-            # Maybe this should be:
-            # xsdot = xsdot.reshape(len(xsdot)//3, 3)
 
         return xsdot
 

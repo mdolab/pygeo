@@ -1063,7 +1063,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                         # Compute the Jacobian vector product
                         if not global_all_zeros[0]:
                             if doFwd:
-                                d_outputs[ptSetName] += DVGeo.totalSensitivityProd(seeds, ptSetName)
+                                d_outputs[ptSetName] += DVGeo.totalSensitivityProd(seeds, ptSetName).flatten()
                             elif doRev:
                                 # TODO totalSensitivityTransProd is broken. does not work with zero surface nodes on a proc
                                 # xdot = DVGeo.totalSensitivityTransProd(dout, ptSetName)
