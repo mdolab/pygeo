@@ -351,8 +351,12 @@ class BaseDVGeometry(ABC):
 
         Returns
         -------
-        dict
-            Design variable values that most closely fit this DVGeo to the reference pointset
+        dvDict : dict
+            Design variable values that most closely fit the pointset to the new points.
+        result : OptimizeResult
+            Scipy OptimizeResult object containing the result of the least squares optimization.
+            See `<https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html>`_ for more
+            details.
         """
         # Get the reference point coordinates from the reference DVGeo object and poterntially downsample them
         refPointCoords = refDVGeo.update(ptSetName)
@@ -407,12 +411,17 @@ class BaseDVGeometry(ABC):
             where ``self`` is the DVGeo object being fit, ``ptSetName`` is the name of the pointset being fit, and
             ``iteration`` is the current iteration number.
         \*\*kwargs :
-            Additional keyword arguments to be passed to scipy's `least_squares` function.
+            Additional keyword arguments to be passed to scipy's `least_squares` function. See
+            `<https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html>`_ for more details.
 
         Returns
         -------
-        dict
+        dvDict : dict
             Design variable values that most closely fit the pointset to the new points.
+        result : OptimizeResult
+            Scipy OptimizeResult object containing the result of the least squares optimization.
+            See `<https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html>`_ for more
+            details.
         """
         # Verify that the pointset exists and that there are the correct number of points to fit
         if ptSetName not in self.ptSetNames:
@@ -482,7 +491,7 @@ class BaseDVGeometry(ABC):
             return sp.csr_array((values, (rowInd, colInd)), shape=(3 * numPoints, numDVs))
 
         # Set some default kwargs for the least_squares function
-        defaultKwargs = {"xtol": 1e-8, "ftol": 1e-8, "gtol": 1e-2, "verbose": 2, "max_nfev": 100}
+        defaultKwargs = {"xtol": 1e-8, "ftol": 1e-8, "gtol": 1e-2, "verbose": 2, "max_nfev": 20}
         # Update the default kwargs with any user-supplied kwargs
         kwargs.update(defaultKwargs)
         # Now solve the least squares problem using scipy's least_squares function
@@ -497,4 +506,4 @@ class BaseDVGeometry(ABC):
         # Convert the result back to a dictionary of design variables
         dvDict = self.convertSensitivityToDict(result.x.reshape(1, -1), out1D=True)
 
-        return dvDict
+        return dvDict, result
