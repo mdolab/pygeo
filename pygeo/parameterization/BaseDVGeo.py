@@ -493,14 +493,14 @@ class BaseDVGeometry(ABC):
         # Set some default kwargs for the least_squares function
         defaultKwargs = {"xtol": 1e-8, "ftol": 1e-8, "gtol": 1e-2, "verbose": 2, "max_nfev": 20}
         # Update the default kwargs with any user-supplied kwargs
-        kwargs.update(defaultKwargs)
+        defaultKwargs.update(kwargs)
         # Now solve the least squares problem using scipy's least_squares function
         result = least_squares(
             computeCoordinateResiduals,
             initialDVArray,
             jac=computeCoordinateJacobian,
             bounds=(lowerBoundsArray, upperBoundsArray),
-            **kwargs,
+            **defaultKwargs,
         )
 
         # Convert the result back to a dictionary of design variables
