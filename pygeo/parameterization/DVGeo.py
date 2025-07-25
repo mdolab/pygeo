@@ -2274,12 +2274,12 @@ class DVGeometry(BaseDVGeometry):
         """
 
         # compute the various DV offsets
-        DVCountGlobal, DVCountLocal, DVCountSecLoc, DVCountSpanLoc = self._getDVOffsets()
+        DVOffsets = self._getDVOffsets()
 
-        i = DVCountGlobal
         dIdxDict = {}
 
-        for dvList in self.varLists.values():
+        for dvList, offset in zip(self.varLists.values(), DVOffsets):
+            i = offset
             for dv in dvList.values():
                 if out1D:
                     dIdxDict[dv.name] = np.ravel(dIdx[:, i : i + dv.nVal])
