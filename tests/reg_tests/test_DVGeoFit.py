@@ -8,17 +8,15 @@ DVGeometry least-squares fitting tests
 @Description :
 """
 
-# ==============================================================================
 # Standard Python modules
-# ==============================================================================
 import os
 import unittest
-import numpy as np
 
-# ==============================================================================
-# External Python modules
-# ==============================================================================
+# External modules
+import numpy as np
 from stl import mesh
+
+# First party modules
 from pygeo import DVGeometry
 
 
