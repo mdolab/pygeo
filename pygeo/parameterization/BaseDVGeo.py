@@ -488,7 +488,7 @@ class BaseDVGeometry(ABC):
                     rowInd.extend(nonZeroInd)
 
                 seed[ii] = 0.0
-            return sp.csr_array((values, (rowInd, colInd)), shape=(3 * numPoints, numDVs))
+            return sp.csr_matrix((values, (rowInd, colInd)), shape=(3 * numPoints, numDVs))
 
         # Set some default kwargs for the least_squares function
         defaultKwargs = {"xtol": 1e-8, "ftol": 1e-8, "gtol": 1e-2, "verbose": 2, "max_nfev": 20}
