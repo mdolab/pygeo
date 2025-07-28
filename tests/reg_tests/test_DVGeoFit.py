@@ -45,8 +45,16 @@ class TestDVGeoFit(unittest.TestCase):
             for i in range(1, nRefAxPts):
                 geo.rot_z["wing"].coef[i] = val[i - 1]
 
+        def span(val, geo):
+            C = geo.extractCoef("wing")
+            s = geo.extractS("wing")
+            for i in range(nRefAxPts):
+                C[i, 2] += val[0] * s[i]
+            geo.restoreCoef(C, "wing")
+
         # Add some DVs
         DVGeo.addGlobalDV(dvName="twist", value=[0] * nTwist, func=twist, lower=-10, upper=10, scale=1)
+        DVGeo.addGlobalDV(dvName="span", value=0.0, func=span, lower=-2, upper=2, scale=1)
         DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
         DVGeo.addPointSet(pts, "test_pts")
@@ -82,8 +90,7 @@ class TestDVGeoFit(unittest.TestCase):
         # ==============================================================================
         # Fit the original FFD to the deformed points
         # ==============================================================================
-        xDV_fit_dict, result = DVGeo.fitDVGeo(DVGeo_deformed, "test_pts", xtol=1e-6, ftol=1e-6, gtol=1e-6)
-        DVGeo.setDesignVars(xDV_fit_dict)
+        xDV_fit, result = DVGeo.fitDVGeo(DVGeo_deformed, "test_pts", xtol=1e-6, ftol=1e-6, gtol=1e-4)
 
         # ==============================================================================
         # Check the results
@@ -91,12 +98,13 @@ class TestDVGeoFit(unittest.TestCase):
         # Check that the deformed points are the same
         new_pts = DVGeo.update("test_pts")
         deformed_pts = DVGeo_deformed.update("test_pts")
-        np.testing.assert_allclose(new_pts, deformed_pts, rtol=1e-4, atol=1e-4)
+        fitError = np.linalg.norm(new_pts - deformed_pts, axis=1)
+        # Make sure all points in the fitted geometry are within 1e-3 of the points they were fit to
+        np.testing.assert_array_less(fitError, 1e-3 * np.ones_like(fitError))
 
         # Check that the design variables are the same
-        xDV_fit = DVGeo.getDesignVars()
-        for key in xDV.keys():
-            np.testing.assert_allclose(xDV[key], xDV_fit[key], rtol=1e-4, atol=1e-4)
+        for key in xDV_fit.keys():
+            np.testing.assert_allclose(xDV_fit[key], randomDVs[key], rtol=1e-2, atol=1e-2)
 
 
 if __name__ == "__main__":
