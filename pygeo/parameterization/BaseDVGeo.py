@@ -429,11 +429,19 @@ class BaseDVGeometry(ABC):
         if ptSetName not in self.ptSetNames:
             closestMatch = get_close_matches(ptSetName, self.ptSetNames, n=1, cutoff=0.0)[0]
             raise ValueError(f"Point set '{ptSetName}' not found. Did you mean '{closestMatch}'?")
-        numPoints = self.points[ptSetName].shape[0]
+
+        numLocalPoints = self.points[ptSetName].shape[0]
+        # Sum up the number of points across all procs if necessary
+        if self.comm.size > 1:
+            numTotalPoints = self.comm.allreduce(numLocalPoints, op=MPI.SUM)
+        else:
+            numTotalPoints = numLocalPoints
+
         numPointsToFit = newPointCoords.shape[0]
-        if numPoints != numPointsToFit:
+        if numLocalPoints != numPointsToFit:
             raise ValueError(
-                f"Point set '{ptSetName}' has {numPoints} points, " f"but {numPointsToFit} points were provided to fit."
+                f"Point set '{ptSetName}' has {numLocalPoints} points on rank {self.comm.rank}, "
+                f"but {numPointsToFit} points were provided to fit."
             )
 
         # Get the initial design variable values and their bounds
@@ -456,7 +464,11 @@ class BaseDVGeometry(ABC):
             if callback is not None:
                 callback(self, ptSetName, iteration_counter[0])
             iteration_counter[0] += 1
-            return (updatedPoints - newPointCoords).flatten()
+            # Compute the residual as the difference in coordinates, flattened to a 1D array, then collect across all procs
+            localRes = (updatedPoints - newPointCoords).flatten()
+            localRes = self.comm.allgather(localRes)
+            # Concatenate the local residuals from all processes into a single array
+            return np.concatenate(localRes, axis=0)
 
         def computeCoordinateJacobian(x):
             """Compute the Jacobian of the residual.
@@ -477,9 +489,13 @@ class BaseDVGeometry(ABC):
             for ii in range(numDVs):
                 seed[ii] = 1.0
                 # Propogate seed through to the point coordinates
-                coordSens = self.totalSensitivityProd(
+                localCoordSens = self.totalSensitivityProd(
                     self.convertSensitivityToDict(seed.reshape(1, -1)), ptSetName
                 ).flatten()
+
+                coordSensList = self.comm.allgather(localCoordSens)
+                # Concatenate the local sensitivities from all processes into a single array
+                coordSens = np.concatenate(coordSensList, axis=0)
 
                 # Store the non-zero entires of this column of the Jacobian
                 nonZeroInd = np.nonzero(coordSens)[0]
@@ -490,7 +506,7 @@ class BaseDVGeometry(ABC):
                     rowInd.extend(nonZeroInd)
 
                 seed[ii] = 0.0
-            return sp.csr_matrix((values, (rowInd, colInd)), shape=(3 * numPoints, numDVs))
+            return sp.csr_matrix((values, (rowInd, colInd)), shape=(3 * numTotalPoints, numDVs))
 
         # Set some default kwargs for the least_squares function
         defaultKwargs = {"xtol": 1e-8, "ftol": 1e-8, "gtol": 1e-2, "verbose": 2, "max_nfev": 20}
