@@ -11,7 +11,6 @@ from abc import abstractmethod
 from collections import OrderedDict
 
 # External modules
-from mpi4py import MPI
 import numpy as np
 from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D
 
