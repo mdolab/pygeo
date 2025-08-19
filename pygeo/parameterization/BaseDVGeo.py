@@ -15,6 +15,7 @@ from difflib import get_close_matches
 import numpy as np
 from scipy.optimize import least_squares
 import scipy.sparse as sp
+from mpi4py import MPI
 
 
 class BaseDVGeometry(ABC):
@@ -22,9 +23,10 @@ class BaseDVGeometry(ABC):
     Abstract class for a basic geometry object
     """
 
-    def __init__(self, fileName, name):
+    def __init__(self, fileName, name, comm=None):
         self.fileName = fileName
         self.name = name
+        self.comm = comm if comm is not None else MPI.COMM_WORLD
 
         self.points = OrderedDict()
         self.pointSets = OrderedDict()

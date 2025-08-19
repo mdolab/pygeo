@@ -94,7 +94,7 @@ class DVGeometryCST(BaseDVGeometry):
         numCST=8,
         idxChord=0,
         idxVertical=1,
-        comm=MPI.COMM_WORLD,
+        comm=None,
         isComplex=False,
         debug=False,
         tolTE=60.0,
@@ -104,10 +104,9 @@ class DVGeometryCST(BaseDVGeometry):
         if not prefoilInstalled:
             raise ImportError("preFoil is not installed and is required to use DVGeometryCST.")
 
-        super().__init__(datFile, name=name)
+        super().__init__(datFile, name=name, comm=comm)
         self.xIdx = idxChord
         self.yIdx = idxVertical
-        self.comm = comm
         self.isComplex = isComplex
         if isComplex:
             self.dtype = complex

@@ -64,8 +64,8 @@ class DVGeoSketch(BaseDVGeometry):
 
     """
 
-    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, projTol=0.01, name=None):
-        super().__init__(fileName=fileName, name=name)
+    def __init__(self, fileName, comm=None, scale=1.0, projTol=0.01, name=None):
+        super().__init__(fileName=fileName, name=name, comm=comm)
 
         # this scales coordinates from model to mesh geometry
         self.modelScale = scale
@@ -74,7 +74,6 @@ class DVGeoSketch(BaseDVGeometry):
         self.projTol = projTol * self.meshScale  # default input is in meters.
 
         self.updatedJac = {}
-        self.comm = comm
 
         # Initial list of DVs
         self.DVs = OrderedDict()
