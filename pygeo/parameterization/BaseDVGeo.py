@@ -12,10 +12,10 @@ import copy
 from difflib import get_close_matches
 
 # External modules
+from mpi4py import MPI
 import numpy as np
 from scipy.optimize import least_squares
 import scipy.sparse as sp
-from mpi4py import MPI
 
 
 class BaseDVGeometry(ABC):

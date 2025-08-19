@@ -13,9 +13,9 @@ import os
 import unittest
 
 # External modules
+from mpi4py import MPI
 import numpy as np
 from stl import mesh
-from mpi4py import MPI
 
 # First party modules
 from pygeo import DVGeometry
