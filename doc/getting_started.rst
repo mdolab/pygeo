@@ -50,11 +50,11 @@ Finally, the control points defining the FFD volume can be moved in space.
 
 As the control points move, they stretch and twist the FFD volume as if it were a block of jelly.
 The points embedded in the volume move in a consistent way.
-The image below shows the cylinder we made embedded in a cube-shaped FFD volume. 
+The image below shows the cylinder we made embedded in a cube-shaped FFD volume.
 The FFD control points are depicted with the large red dots and the embedding volume is the blue shaded region.
 
 .. note::
-    The FFD embedding volume is not necessarily coincident with the grid defined by the control points. 
+    The FFD embedding volume is not necessarily coincident with the grid defined by the control points.
     For example, they are coincident here (both are the region shaded in blue) but will diverge after the :ref:`deformation later <deform>`.
     The embedded volume and FFD control points can be viewed in Tecplot using the output from :meth:`writeTecplot <.DVGeometry.writeTecplot>`.
 
@@ -125,7 +125,7 @@ For implementation reasons, the raw array of control points is not in contiguous
 If you need to access a particular control point, you can obtain its index in the design variable array by invoking the :meth:`getLocalIndex <.DVGeometry.getLocalIndex>` method, which returns a tensor of indices addressible in the same i, j, k layout as the FFD file you created.
 
 The following example illustrates the use of the :meth:`getLocalIndex <.DVGeometry.getLocalIndex>` method in order to pull one slice of FFD control point coordinates (at k=0, a.k.a z=0) in contiguous order.
-We can also print out the indices and coordinates of the FFD control points, which can be helpful for debugging. 
+We can also print out the indices and coordinates of the FFD control points, which can be helpful for debugging.
 
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst getLocalIndex
@@ -163,14 +163,14 @@ This is because when we defined the design variable, we chose the y-axis only as
 
 .. _deform:
 
-We can now see the deformed state of the FFD control points and embedding volume. 
+We can now see the deformed state of the FFD control points and embedding volume.
 Now, unlike before, the FFD embedding volume (blue lines and shaded area) is not coincident with the grid defined by the FFD control points (red circles and lines).
 
 .. image:: ../examples/ffd_cylinder/images/cyl_embedded_deformed.png
    :width: 450
    :align: center
 
-We can also compare the locations of the original and deformed FFD control points as well as the resulting shapes. 
+We can also compare the locations of the original and deformed FFD control points as well as the resulting shapes.
 
 .. image:: ../examples/ffd_cylinder/images/deformed_cylinder.png
    :width: 600
@@ -182,8 +182,8 @@ Summary
 
 In this tutorial, you learned the basics of ``pyGeo``'s FFD geometry parameterization capabilities.
 You now know enough to set up a basic shape optimization, such as the :doc:`MACH-Aero tutorial <mach-aero:index>`.
-More advanced topics include :ref:`global design variables <advancedffd>`, applying spatial constraints, and alternative parameterization options (such as :ref:`ESP <esp_airfoil>` or OpenVSP). 
+More advanced topics include :ref:`global design variables <advancedffd>`, applying spatial constraints, and alternative parameterization options (such as :ref:`ESP <esp_airfoil>` or OpenVSP).
 
-.. TODO link to these once they're in 
+.. TODO link to these once they're in
 
 The scripts excerpted for this tutorial are located at ``pygeo/examples/ffd_cylinder/runFFDExample.py`` and ``genFFD.py``.

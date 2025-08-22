@@ -156,7 +156,8 @@ class DCELFace:
 
     def isinside(self, P):
         """Determines whether a point is inside a face using a
-        winding formula"""
+        winding formula
+        """
         pl = self.vertexlist()
         V = []
         for i in range(len(pl)):
