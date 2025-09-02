@@ -159,7 +159,7 @@ class pyNetwork:
         closeTecplot(f)
 
     def _updateCurveCoef(self):
-        """update the coefficents on the pyNetwork update"""
+        """Update the coefficents on the pyNetwork update"""
         for ii in range(len(self.coef)):
             for jj in range(len(self.topo.gIndex[ii])):
                 icurve = self.topo.gIndex[ii][jj][0]

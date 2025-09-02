@@ -90,7 +90,8 @@ class geoDVLocal(geoDV):
 
     def __call__(self, coef, config):
         """When the object is called, apply the design variable values to
-        coefficients"""
+        coefficients
+        """
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             for i in range(self.nVal):
                 coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].real
@@ -313,7 +314,8 @@ class geoDVShapeFunc(geoDV):
 
     def __call__(self, coef, config):
         """When the object is called, apply the design variable values to
-        coefficients"""
+        coefficients
+        """
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             # loop over the shapes and add the perturbations to each coef
             for ii, shape in enumerate(self.shapes):

@@ -4,7 +4,7 @@ $!VarSet |LFDSVL1| = '"X" "Y" "Z"'
 $!VarSet |LFDSRN2| = '3D Systems STL (FEA)'
 $!VarSet |LFDSFN2| = '"StandardSyntax" "1.0" "FEALoaderVersion" "443" "FILENAME_File" "cylinder.stl" "Append" "Yes" "AutoAssignStrandIDs" "Yes"'
 $!SetStyleBase Factory
-$!CreateColorMap 
+$!CreateColorMap
   Name = 'Sequential - Viridis'
   NumControlPoints = 11
   ControlPoint 1
@@ -183,7 +183,7 @@ $!CreateColorMap
       B = 37
       }
     }
-$!GlobalPaper 
+$!GlobalPaper
   PaperSizeInfo
     {
     Letter
@@ -196,7 +196,7 @@ $!GlobalPaper
       BottomHardClipOffset = 0.125
       }
     }
-$!Page 
+$!Page
   Name = 'Untitled'
   PaperAttributes
     {
@@ -232,7 +232,7 @@ $!ReadDataSet  '|LFDSFN2|'
   DataSetReader = '|LFDSRN2|'
 $!RemoveVar |LFDSRN2|
 $!RemoveVar |LFDSFN2|
-$!FrameLayout 
+$!FrameLayout
   ShowBorder = No
   ShowHeader = No
   HeaderColor = Red
@@ -243,15 +243,15 @@ $!FrameLayout
     }
   Width = 9
   Height = 8
-$!ThreeDAxis 
+$!ThreeDAxis
   AspectRatioLimit = 25
   BoxAspectRatioLimit = 25
 $!PlotType  = Cartesian3D
 $!FrameName  = 'Frame 001'
-$!GlobalTime 
+$!GlobalTime
   SolutionTime = 0
 $!ActiveFieldMaps  =  [1-2]
-$!GlobalRGB 
+$!GlobalRGB
   RangeMin = 0
   RangeMax = 1
 $!GlobalContour  1
@@ -398,7 +398,7 @@ $!GlobalContour  8
       CMax = 1
       }
     }
-$!GlobalScatter 
+$!GlobalScatter
   Var = 4
   RelativeSize = 6.283E-06
   Legend
@@ -530,7 +530,7 @@ $!FieldMap  [2]
     LightingEffect = Gouraud
     SurfaceTranslucency = 60
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     VarNum = 1
@@ -544,7 +544,7 @@ $!ThreeDAxis
     VarNum = 3
     }
 $!View Fit
-$!ThreeDAxis 
+$!ThreeDAxis
   AxisMode = XYZDependent
   XYDepXToYRatio = 1
   DepXToYRatio = 1
@@ -557,7 +557,7 @@ $!ThreeDAxis
       Y = 36.495
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     ShowAxis = No
@@ -569,7 +569,7 @@ $!ThreeDAxis
       Edge = 1
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   YDetail
     {
     ShowAxis = No
@@ -581,7 +581,7 @@ $!ThreeDAxis
       Edge = 3
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   ZDetail
     {
     ShowAxis = No
@@ -805,7 +805,7 @@ $!SliceAttributes  8
     LightingEffect = Gouraud
     SurfaceTranslucency = 10
     }
-$!StreamAttributes 
+$!StreamAttributes
   StreamTiming
     {
     MarkSize = 1
@@ -822,7 +822,7 @@ $!StreamAttributes
       }
     }
   MaxSteps = 10000
-$!GlobalThreeD 
+$!GlobalThreeD
   AxisScaleFact
     {
     X = 1
@@ -853,7 +853,7 @@ $!GlobalThreeD
   SymbolLiftFraction = 0.6
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
-$!ThreeDView 
+$!ThreeDView
   PSIAngle = 139.957
   ThetaAngle = 117.477
   AlphaAngle = -66.4603
@@ -864,12 +864,12 @@ $!ThreeDView
     Z = -7.210891177771517
     }
   ViewWidth = 1.74251
-$!FieldLayers 
+$!FieldLayers
   ShowScatter = Yes
   ShowShade = Yes
   ShowEdge = No
   UseTranslucency = Yes
-$!StreamtraceLayers 
+$!StreamtraceLayers
   Show = No
 $!FrameControl ActivateByNumber
   Frame = 1

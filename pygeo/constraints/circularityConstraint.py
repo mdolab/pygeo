@@ -102,7 +102,7 @@ class CircularityConstraint(GeometricConstraint):
 
     def _computeLengths(self, center, coords, X):
         """
-        compute the lengths from the center and coordinates
+        Compute the lengths from the center and coordinates
         """
         reflength2 = np.sum((center - coords[0, :]) ** 2)
         for i in range(self.nCon):

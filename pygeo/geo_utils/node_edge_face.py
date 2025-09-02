@@ -33,7 +33,8 @@ def edgesFromNode(n):
 
 def edgesFromNodeIndex(n, N, M):
     """Return the two edges coorsponding to node n AND return the index
-    of the node on the edge according to the size (N, M)"""
+    of the node on the edge according to the size (N, M)
+    """
     if n == 0:
         return 0, 2, 0, 0
     if n == 1:

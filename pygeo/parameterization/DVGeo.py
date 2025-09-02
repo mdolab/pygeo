@@ -436,11 +436,11 @@ class DVGeometry(BaseDVGeometry):
         Examples
         --------
         >>> # Simple wing with single volume FFD, reference axis at 1/4 chord:
-        >>> DVGeo.addRefAxis('wing', xFraction=0.25)
+        >>> DVGeo.addRefAxis("wing", xFraction=0.25)
         >>> # Multiblock FFD, wing is volume 6.
-        >>> DVGeo.addRefAxis('wing', xFraction=0.25, volumes=[6])
+        >>> DVGeo.addRefAxis("wing", xFraction=0.25, volumes=[6])
         >>> # Multiblock FFD, multiple volumes attached refAxis
-        >>> DVGeo.addRefAxis('wing', myCurve, volumes=[2,3,4])
+        >>> DVGeo.addRefAxis("wing", myCurve, volumes=[2, 3, 4])
 
         Returns
         -------
@@ -553,9 +553,7 @@ class DVGeometry(BaseDVGeometry):
                             break
 
             if len(volOrd) < nVol:
-                raise Error(
-                    "The volumes are not ordered with matching faces" " in the direction of the reference axis."
-                )
+                raise Error("The volumes are not ordered with matching faces in the direction of the reference axis.")
 
             # Count total number of sections and check if volumes are aligned
             # face to face along refaxis direction
@@ -649,7 +647,7 @@ class DVGeometry(BaseDVGeometry):
                 "rotAxisVar": rotAxisVar,
             }
         else:
-            raise Error("One of 'curve' or 'xFraction' must be " "specified for a call to addRefAxis")
+            raise Error("One of 'curve' or 'xFraction' must be specified for a call to addRefAxis")
 
         # Specify indices to be ignored
         self.axis[name]["ignoreInd"] = ignoreInd
@@ -671,14 +669,14 @@ class DVGeometry(BaseDVGeometry):
             for ind in ignoreInd:
                 try:
                     tmp = indSetA.index(ind)
-                except ValueError:
+                except ValueError as e:
                     raise Error(
                         f"""The index {ind} is not in indSetA. This is likely due to a weird
                         issue caused by the point reduction routines during initialization.
                         Reduce the offset of the FFD control points from the symmetry plane
                         to avoid it. The max deviation from the symmetry plane needs to be
                         less than around 1e-5 if rest of the default tolerances in pygeo is used."""
-                    )
+                    ) from e
                 ind_mirror = indSetB[tmp]
                 ignoreIndSymm.append(ind_mirror)
 
@@ -867,7 +865,7 @@ class DVGeometry(BaseDVGeometry):
 
         # Make sure the DVGeo being added is flaged as a child:
         if childDVGeo.isChild is False:
-            raise Error("Trying to add a child FFD that has NOT been " "created as a child. This operation is illegal.")
+            raise Error("Trying to add a child FFD that has NOT been created as a child. This operation is illegal.")
 
         # set the index
         iChild = len(self.children)
@@ -1035,14 +1033,14 @@ class DVGeometry(BaseDVGeometry):
         --------
         >>> # Add all variables in FFD as local shape variables
         >>> # moving in the y direction, within +/- 1.0 units
-        >>> DVGeo.addLocalDV('shape_vars', lower=-1.0, upper= 1.0, axis='y')
+        >>> DVGeo.addLocalDV("shape_vars", lower=-1.0, upper=1.0, axis="y")
         >>> # As above, but moving in the x and y directions.
-        >>> nVar = DVGeo.addLocalDV('shape_vars_x', lower=-1.0, upper= 1.0, axis='x')
-        >>> nVar = DVGeo.addLocalDV('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
+        >>> nVar = DVGeo.addLocalDV("shape_vars_x", lower=-1.0, upper=1.0, axis="x")
+        >>> nVar = DVGeo.addLocalDV("shape_vars_y", lower=-1.0, upper=1.0, axis="y")
         >>> # Create a point select to use: (box from (0,0,0) to (10,0,10) with
         >>> # any point projecting into the point along 'y' axis will be selected.
-        >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
-        >>> nVar = DVGeo.addLocalDV('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
+        >>> PS = geo_utils.PointSelect(type="y", pt1=[0, 0, 0], pt2=[10, 0, 10])
+        >>> nVar = DVGeo.addLocalDV("shape_vars", lower=-1.0, upper=1.0, pointSelect=PS)
         """
         if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
@@ -1163,7 +1161,7 @@ class DVGeometry(BaseDVGeometry):
         --------
         >>> # Add all spanwise local variables
         >>> # moving in the y direction, within +/- 0.5 units
-        >>> DVGeo.addSpanwiseLocalDV("shape", 'k', lower=-0.5, upper=0.5, axis="z", scale=1.0)
+        >>> DVGeo.addSpanwiseLocalDV("shape", "k", lower=-0.5, upper=0.5, axis="z", scale=1.0)
         """
         if isinstance(config, str):
             config = [config]
@@ -1199,7 +1197,7 @@ class DVGeometry(BaseDVGeometry):
             spanIndex = [spanIndex] * len(volList)
         elif isinstance(spanIndex, list):
             if len(spanIndex) != len(volList):
-                raise Error("If a list is given for spanIndex, the length must be" " equal to the length of volList.")
+                raise Error("If a list is given for spanIndex, the length must be equal to the length of volList.")
 
         ijk_2_idx = {"i": 0, "j": 1, "k": 2}
 
@@ -1402,7 +1400,7 @@ class DVGeometry(BaseDVGeometry):
         --------
         >>> # Add all control points in FFD as local shape variables
         >>> # moving in the 1 direction, within +/- 1.0 units
-        >>> DVGeo.addLocalSectionDV('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
+        >>> DVGeo.addLocalSectionDV("shape_vars", secIndex="k", lower=-1, upper=1, axis=1)
         """
         if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
@@ -1444,7 +1442,7 @@ class DVGeometry(BaseDVGeometry):
             secIndex = [secIndex] * len(volList)
         elif isinstance(secIndex, list):
             if len(secIndex) != len(volList):
-                raise Error("If a list is given for secIndex, the length must be" " equal to the length of volList.")
+                raise Error("If a list is given for secIndex, the length must be equal to the length of volList.")
 
         if orient0 is not None:
             # 'i', 'j', or 'k'
@@ -1453,7 +1451,7 @@ class DVGeometry(BaseDVGeometry):
             # ['k', 'k', 'i', etc.]
             elif isinstance(orient0, list):
                 if len(orient0) != len(volList):
-                    raise Error("If a list is given for orient0, the length must" " be equal to the length of volList.")
+                    raise Error("If a list is given for orient0, the length must be equal to the length of volList.")
             # np.array([1.0, 0.0, 0.0])
             elif isinstance(orient0, np.ndarray):
                 # vector
@@ -1464,7 +1462,7 @@ class DVGeometry(BaseDVGeometry):
                     orient0 = np.repeat(orient0, len(volList), 0)
                 elif orient0.shape[0] != len(volList):
                     raise Error(
-                        "If an array is given for orient0, the row dimension" " must be equal to the length of volList."
+                        "If an array is given for orient0, the row dimension must be equal to the length of volList."
                     )
             for i, iVol in enumerate(volList):
                 self.sectionFrame(secIndex[i], secTransform, secLink, iVol, orient0[i], orient2=orient2)
@@ -1618,7 +1616,11 @@ class DVGeometry(BaseDVGeometry):
             >>> lidx = DVGeo.getLocalIndex(0)
             >>> dir_up = np.array([0.0, 1.0, 0.0])
             >>> shape_1 = {lidx[0, 0, 0]: dir_up, lidx[0, 0, 1]: dir_up}
-            >>> shape_2 = {lidx[1, 0, 0]: dir_up, lidx[1, 0, 1]: dir_up * 0.5, lidx[2, 0, 1]: dir_up * 0.5, }
+            >>> shape_2 = {
+            ...     lidx[1, 0, 0]: dir_up,
+            ...     lidx[1, 0, 1]: dir_up * 0.5,
+            ...     lidx[2, 0, 1]: dir_up * 0.5,
+            ... }
             >>> shapes = [shape_1, shape_2]
             >>> DVGeo.addShapeFunctionDV("shape_func", shapes)
 
@@ -1816,7 +1818,7 @@ class DVGeometry(BaseDVGeometry):
 
     def zeroJacobians(self, ptSetNames):
         """
-        set stored jacobians to None for ptSetNames
+        Set stored jacobians to None for ptSetNames
 
         Parameters
         ----------
@@ -1873,7 +1875,8 @@ class DVGeometry(BaseDVGeometry):
 
     def extractCoef(self, axisID):
         """Extract the coefficients for the selected reference
-        axis. This should be used only inside design variable functions"""
+        axis. This should be used only inside design variable functions
+        """
 
         axisNumber = self._getAxisNumber(axisID)
         C = np.zeros((len(self.refAxis.topo.lIndex[axisNumber]), 3), self.coef.dtype)
@@ -1886,7 +1889,8 @@ class DVGeometry(BaseDVGeometry):
 
     def restoreCoef(self, coef, axisID):
         """Restore the coefficients for the selected reference
-        axis. This should be used inside design variable functions"""
+        axis. This should be used inside design variable functions
+        """
 
         # Reset
         axisNumber = self._getAxisNumber(axisID)
@@ -1896,7 +1900,8 @@ class DVGeometry(BaseDVGeometry):
 
     def extractS(self, axisID):
         """Extract the parametric positions of the control
-        points. This is usually used in conjunction with extractCoef()"""
+        points. This is usually used in conjunction with extractCoef()
+        """
         axisNumber = self._getAxisNumber(axisID)
         return self.refAxis.curves[axisNumber].s.copy()
 
@@ -2630,7 +2635,7 @@ class DVGeometry(BaseDVGeometry):
 
     def computeDVJacobian(self, config=None):
         """
-        return dCoefdDV for a given config
+        Return dCoefdDV for a given config
         """
 
         # if dCoefdDV is not out of date, return immediately
@@ -2693,7 +2698,8 @@ class DVGeometry(BaseDVGeometry):
 
     def computeTotalJacobian(self, ptSetName, config=None):
         """Return the total point jacobian in CSR format since we
-        need this for TACS"""
+        need this for TACS
+        """
 
         # Finalize the object, if not done yet
         self._finalize()
@@ -2758,7 +2764,8 @@ class DVGeometry(BaseDVGeometry):
 
     def computeTotalJacobianCS(self, ptSetName, config=None):
         """Return the total point jacobian in CSR format since we
-        need this for TACS"""
+        need this for TACS
+        """
 
         self._finalize()
         self.curPtSet = ptSetName
@@ -3202,7 +3209,8 @@ class DVGeometry(BaseDVGeometry):
 
     def getLocalIndex(self, iVol, comp=None):
         """Return the local index mapping that points to the global
-        coefficient list for a given volume"""
+        coefficient list for a given volume
+        """
         return self.FFD.topo.lIndex[iVol].copy()
 
     def getFlattenedChildren(self):
@@ -3691,7 +3699,7 @@ class DVGeometry(BaseDVGeometry):
 
     def _getDVOffsets(self):
         """
-        return the global and local DV offsets for this FFD
+        Return the global and local DV offsets for this FFD
         """
 
         # figure out the split between local and global Variables
@@ -3808,7 +3816,8 @@ class DVGeometry(BaseDVGeometry):
     def _update_deriv_cs(self, ptSetName, config=None):
         """
         A version of the update_deriv function specifically for use
-        in the computeTotalJacobianCS function."""
+        in the computeTotalJacobianCS function.
+        """
         new_pts = np.zeros((self.nPtAttachFull, 3), "D")
 
         # Make sure coefficients are complex
@@ -4822,7 +4831,7 @@ class DVGeometry(BaseDVGeometry):
             elif isinstance(orient0, np.ndarray):
                 orient0vec = True
             else:
-                raise Error("orient0 must be an index (i, j, or k) or a " "vector.")
+                raise Error("orient0 must be an index (i, j, or k) or a vector.")
         # Get section index and number of sections
         sectionIndex = ijk_2_idx[sectionIndex.lower()]
         nSections = lIndex.shape[sectionIndex]

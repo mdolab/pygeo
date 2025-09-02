@@ -83,7 +83,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
     def getVarNames(self):
         """
-        return the var names relevant to this constraint. By default, this is the DVGeo
+        Return the var names relevant to this constraint. By default, this is the DVGeo
         variables, but some constraints may extend this to include other variables.
         """
         if self.DVGeo1 is not None:
