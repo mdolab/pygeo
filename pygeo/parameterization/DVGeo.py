@@ -2451,10 +2451,11 @@ class DVGeometry(BaseDVGeometry):
 
         # now that we have self.JT compute the Mat-Mat multiplication
         nDV = self._getNDV()
-        dIdx_local = np.zeros((N, nDV), "d")
-        for i in range(N):
-            if self.JT[ptSetName] is not None:
-                dIdx_local[i, :] = self.JT[ptSetName].dot(dIdpt[i, :, :].flatten())
+
+        if self.JT[ptSetName] is None:
+            dIdx_local = np.zeros((N, nDV), "d")
+        else:
+            dIdx_local = dIdpt.reshape(N, -1) @ self.JT[ptSetName].T
 
         if comm:  # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
