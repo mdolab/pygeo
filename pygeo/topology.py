@@ -351,7 +351,8 @@ class Topology:
     def _getDGList(self):
         """After calcGlobalNumbering is called with the size
         parameters, we can now produce a list of length ndg with the
-        each entry coorsponing to the number N associated with that DG"""
+        each entry coorsponing to the number N associated with that DG
+        """
 
         # This can be run in linear time...just loop over each edge
         # and add to dg list
@@ -416,7 +417,8 @@ class CurveTopology(Topology):
 
     def calcGlobalNumbering(self, sizes, curveList=None):
         """Internal function to calculate the global/local numbering
-        for each curve"""
+        for each curve
+        """
         for i in range(len(sizes)):
             self.edges[self.edgeLink[i][0]].N = sizes[i]
 

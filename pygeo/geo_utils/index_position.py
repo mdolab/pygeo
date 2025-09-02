@@ -25,7 +25,8 @@ def indexPosition2D(i, j, N, M):
     edge: this is the edge number if type==1
     node: this is the node number if type==2
     index: this is the value index along the edge of interest --
-    only defined for edges"""
+    only defined for edges
+    """
 
     if 0 < i < N - 1 and 0 < j < M - 1:  # Interior
         return 0, None, None, None

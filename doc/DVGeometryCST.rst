@@ -4,4 +4,4 @@ DVGeometryCST
 -------------
 
 .. autoclass:: pygeo.parameterization.DVGeoCST.DVGeometryCST
-    :members: 
+    :members:

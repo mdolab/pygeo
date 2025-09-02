@@ -6,7 +6,7 @@ $!VarSet |LFDSFN2| = '"StandardSyntax" "1.0" "FEALoaderVersion" "443" "FILENAME_
 $!VarSet |LFDSFN3| = '"local_parent.dat"'
 $!VarSet |LFDSVL3| = '"X" "Y" "Z" "Node UserID" "Element UserID" "Material ID" "Part ID" "Property ID"'
 $!SetStyleBase Factory
-$!CreateColorMap 
+$!CreateColorMap
   Name = 'Sequential - Viridis'
   NumControlPoints = 11
   ControlPoint 1
@@ -185,7 +185,7 @@ $!CreateColorMap
       B = 37
       }
     }
-$!GlobalPaper 
+$!GlobalPaper
   PaperSizeInfo
     {
     Letter
@@ -198,7 +198,7 @@ $!GlobalPaper
       BottomHardClipOffset = 0.125
       }
     }
-$!Page 
+$!Page
   Name = 'Untitled'
   PaperAttributes
     {
@@ -239,7 +239,7 @@ $!ReadDataSet  '|LFDSFN3|'
   VarNameList = '|LFDSVL3|'
 $!RemoveVar |LFDSVL3|
 $!RemoveVar |LFDSFN3|
-$!FrameLayout 
+$!FrameLayout
   ShowBorder = No
   ShowHeader = No
   HeaderColor = Red
@@ -250,15 +250,15 @@ $!FrameLayout
     }
   Width = 9
   Height = 2.8739
-$!ThreeDAxis 
+$!ThreeDAxis
   AspectRatioLimit = 25
   BoxAspectRatioLimit = 25
 $!PlotType  = Cartesian3D
 $!FrameName  = 'Frame 001'
-$!GlobalTime 
+$!GlobalTime
   SolutionTime = 0
 $!ActiveFieldMaps  =  [1-5]
-$!GlobalRGB 
+$!GlobalRGB
   RedChannelVar = 4
   GreenChannelVar = 4
   BlueChannelVar = 4
@@ -548,7 +548,7 @@ $!ContourLevels New
 1600
 1700
 1800
-$!GlobalScatter 
+$!GlobalScatter
   Var = 3
   RelativeSize = 0.01684
   Legend
@@ -846,7 +846,7 @@ $!FieldMap  [5]
     {
     LightingEffect = Gouraud
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     VarNum = 1
@@ -860,7 +860,7 @@ $!ThreeDAxis
     VarNum = 3
     }
 $!View Fit
-$!ThreeDAxis 
+$!ThreeDAxis
   AxisMode = XYZDependent
   XYDepXToYRatio = 1
   DepXToYRatio = 1
@@ -873,7 +873,7 @@ $!ThreeDAxis
       Y = 16.809
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     ShowAxis = No
@@ -885,7 +885,7 @@ $!ThreeDAxis
       Edge = 4
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   YDetail
     {
     ShowAxis = No
@@ -897,7 +897,7 @@ $!ThreeDAxis
       Edge = 4
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   ZDetail
     {
     ShowAxis = No
@@ -1124,7 +1124,7 @@ $!SliceAttributes  8
     LightingEffect = Gouraud
     SurfaceTranslucency = 10
     }
-$!StreamAttributes 
+$!StreamAttributes
   StreamTiming
     {
     MarkSize = 1
@@ -1141,7 +1141,7 @@ $!StreamAttributes
       }
     }
   MaxSteps = 10000
-$!GlobalThreeD 
+$!GlobalThreeD
   AxisScaleFact
     {
     X = 1
@@ -1172,7 +1172,7 @@ $!GlobalThreeD
   SymbolLiftFraction = 0.6
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
-$!ThreeDView 
+$!ThreeDView
   PSIAngle = 90
   ThetaAngle = 5.25612E-15
   AlphaAngle = -90.3394
@@ -1183,13 +1183,13 @@ $!ThreeDView
     Z = 2.692007356523627
     }
   ViewWidth = 5.95718
-$!FieldLayers 
+$!FieldLayers
   ShowScatter = Yes
   ShowShade = Yes
   UseTranslucency = Yes
-$!StreamtraceLayers 
+$!StreamtraceLayers
   Show = No
-$!AttachText 
+$!AttachText
   AnchorPos
     {
     X = 24.27253668763102
@@ -1203,8 +1203,8 @@ $!AttachText
   Color = Blue
   Text = 'Reference axis'
 ### Frame Number 2 ###
-$!CreateNewFrame 
-$!FrameLayout 
+$!CreateNewFrame
+$!FrameLayout
   ShowBorder = No
   ShowHeader = No
   HeaderColor = Red
@@ -1215,15 +1215,15 @@ $!FrameLayout
     }
   Width = 4.5019
   Height = 3.3026
-$!ThreeDAxis 
+$!ThreeDAxis
   AspectRatioLimit = 25
   BoxAspectRatioLimit = 25
 $!PlotType  = Cartesian3D
 $!FrameName  = 'Frame 001'
-$!GlobalTime 
+$!GlobalTime
   SolutionTime = 0
 $!ActiveFieldMaps  =  [1-2,4]
-$!GlobalRGB 
+$!GlobalRGB
   RangeMin = 0
   RangeMax = 1
 $!GlobalContour  1
@@ -1370,7 +1370,7 @@ $!GlobalContour  8
       CMax = 1
       }
     }
-$!GlobalScatter 
+$!GlobalScatter
   Var = 3
   RelativeSize = 0.01684
   Legend
@@ -1664,7 +1664,7 @@ $!FieldMap  [5]
     {
     LightingEffect = Gouraud
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     VarNum = 1
@@ -1678,7 +1678,7 @@ $!ThreeDAxis
     VarNum = 3
     }
 $!View Fit
-$!ThreeDAxis 
+$!ThreeDAxis
   AxisMode = XYZDependent
   XYDepXToYRatio = 1
   DepXToYRatio = 1
@@ -1691,7 +1691,7 @@ $!ThreeDAxis
       Y = 78.601
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     ShowAxis = No
@@ -1703,7 +1703,7 @@ $!ThreeDAxis
       Edge = 3
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   YDetail
     {
     ShowAxis = No
@@ -1715,7 +1715,7 @@ $!ThreeDAxis
       Edge = 4
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   ZDetail
     {
     ShowAxis = No
@@ -1942,7 +1942,7 @@ $!SliceAttributes  8
     LightingEffect = Gouraud
     SurfaceTranslucency = 10
     }
-$!StreamAttributes 
+$!StreamAttributes
   StreamTiming
     {
     MarkSize = 1
@@ -1959,7 +1959,7 @@ $!StreamAttributes
       }
     }
   MaxSteps = 10000
-$!GlobalThreeD 
+$!GlobalThreeD
   AxisScaleFact
     {
     X = 1
@@ -1990,7 +1990,7 @@ $!GlobalThreeD
   SymbolLiftFraction = 0.6
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
-$!ThreeDView 
+$!ThreeDView
   PSIAngle = 35.6813
   ThetaAngle = 117.993
   AlphaAngle = -110.136
@@ -2001,15 +2001,15 @@ $!ThreeDView
     Z = 22.77147534696472
     }
   ViewWidth = 4.22666
-$!FieldLayers 
+$!FieldLayers
   ShowScatter = Yes
   ShowShade = Yes
   UseTranslucency = Yes
-$!StreamtraceLayers 
+$!StreamtraceLayers
   Show = No
 ### Frame Number 3 ###
-$!CreateNewFrame 
-$!FrameLayout 
+$!CreateNewFrame
+$!FrameLayout
   ShowBorder = No
   ShowHeader = No
   HeaderColor = Red
@@ -2020,15 +2020,15 @@ $!FrameLayout
     }
   Width = 4.5019
   Height = 3.3026
-$!ThreeDAxis 
+$!ThreeDAxis
   AspectRatioLimit = 25
   BoxAspectRatioLimit = 25
 $!PlotType  = Cartesian3D
 $!FrameName  = 'Frame 001'
-$!GlobalTime 
+$!GlobalTime
   SolutionTime = 0
 $!ActiveFieldMaps  =  [1-2,4]
-$!GlobalRGB 
+$!GlobalRGB
   RangeMin = 0
   RangeMax = 1
 $!GlobalContour  1
@@ -2175,7 +2175,7 @@ $!GlobalContour  8
       CMax = 1
       }
     }
-$!GlobalScatter 
+$!GlobalScatter
   Var = 3
   RelativeSize = 0.01684
   Legend
@@ -2469,7 +2469,7 @@ $!FieldMap  [5]
     {
     LightingEffect = Gouraud
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     VarNum = 1
@@ -2483,7 +2483,7 @@ $!ThreeDAxis
     VarNum = 3
     }
 $!View Fit
-$!ThreeDAxis 
+$!ThreeDAxis
   AxisMode = XYZDependent
   XYDepXToYRatio = 1
   DepXToYRatio = 1
@@ -2496,7 +2496,7 @@ $!ThreeDAxis
       Y = 78.601
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     ShowAxis = No
@@ -2508,7 +2508,7 @@ $!ThreeDAxis
       Edge = 3
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   YDetail
     {
     ShowAxis = No
@@ -2520,7 +2520,7 @@ $!ThreeDAxis
       Edge = 3
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   ZDetail
     {
     ShowAxis = No
@@ -2747,7 +2747,7 @@ $!SliceAttributes  8
     LightingEffect = Gouraud
     SurfaceTranslucency = 10
     }
-$!StreamAttributes 
+$!StreamAttributes
   StreamTiming
     {
     MarkSize = 1
@@ -2764,7 +2764,7 @@ $!StreamAttributes
       }
     }
   MaxSteps = 10000
-$!GlobalThreeD 
+$!GlobalThreeD
   AxisScaleFact
     {
     X = 1
@@ -2795,7 +2795,7 @@ $!GlobalThreeD
   SymbolLiftFraction = 0.6
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
-$!ThreeDView 
+$!ThreeDView
   PSIAngle = 180
   ThetaAngle = 180
   ViewerPosition
@@ -2805,11 +2805,11 @@ $!ThreeDView
     Z = -22.05751968646555
     }
   ViewWidth = 1.79666
-$!FieldLayers 
+$!FieldLayers
   ShowScatter = Yes
   ShowShade = Yes
   UseTranslucency = Yes
-$!StreamtraceLayers 
+$!StreamtraceLayers
   Show = No
 $!FrameControl ActivateByNumber
   Frame = 2

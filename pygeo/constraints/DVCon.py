@@ -127,7 +127,7 @@ class DVConstraints:
         >>> surf = CFDsolver.getTriangulatedMeshSurface()
         >>> DVCon.setSurface(surf)
         >>> # Or using a pyGeo surface object:
-        >>> surf = pyGeo('iges',fileName='wing.igs')
+        >>> surf = pyGeo("iges", fileName="wing.igs")
         >>> DVCon.setSurface(surf)
 
         """
@@ -2143,15 +2143,16 @@ class DVConstraints:
         Examples
         --------
         >>> # Preferred way: Constraints at the front and back (ifaces) of volume 0
-        >>> DVCon.addLeTeConstraints(0, 'iLow')
-        >>> DVCon.addLeTeConstraints(0, 'iHigh')
+        >>> DVCon.addLeTeConstraints(0, "iLow")
+        >>> DVCon.addLeTeConstraints(0, "iHigh")
         >>> # Alternative way -- this can be specialzed as required:
-        >>> lIndex = DVGeo.getLocalIndex(1) # Volume 2
-        >>> indSetA = []; indSetB = [];
+        >>> lIndex = DVGeo.getLocalIndex(1)  # Volume 2
+        >>> indSetA = []
+        ... indSetB = []
         >>> for k in range(4,7): # 4 on the leading edge
         >>>     indSetA.append(lIndex[0, 0, k])
         >>>     indSetB.append(lIndex[0, 1, k])
-        >>> lIndex = DVGeo.getLocalIndex(4) # Volume 5 (different from LE)
+        >>> lIndex = DVGeo.getLocalIndex(4)  # Volume 5 (different from LE)
         >>> for k in range(4,8): # 5 on the trailing edge
         >>>     indSetA.append(lIndex[-1, 0, k])
         >>>     indSetB.append(lIndex[-1, 1, k])
@@ -2193,7 +2194,7 @@ class DVConstraints:
                 indices = lIndex[:, :, -1]
                 kFace = True
             else:
-                raise Error("faceID must be one of iLow, iHigh, jLow, jHigh, " "kLow or kHigh.")
+                raise Error("faceID must be one of iLow, iHigh, jLow, jHigh, kLow or kHigh.")
 
             # Now we see if one and exactly one length in 2:
             shp = indices.shape
@@ -2219,7 +2220,7 @@ class DVConstraints:
                         indSetA = indices[:, 0]
                         indSetB = indices[:, 1]
                     else:
-                        raise Error("Invalid value for topID. value must be" " i, j or k")
+                        raise Error("Invalid value for topID. value must be i, j or k")
 
                 else:
                     raise Error(
@@ -2233,7 +2234,7 @@ class DVConstraints:
 
         elif indSetA is not None and indSetB is not None:
             if len(indSetA) != len(indSetB):
-                raise Error("The length of the supplied indices are not " "the same length")
+                raise Error("The length of the supplied indices are not the same length")
         else:
             raise Error(
                 "Incorrect data supplied to addLeTeConstraint. The "
@@ -2271,7 +2272,7 @@ class DVConstraints:
         variables that have been added to DVGeo. The constraints are
         specified in the following general form::
 
-            lower <= factorA*dvA + factorB*dvB <= upper
+            lower <= factorA * dvA + factorB * dvB <= upper
 
         The lists ``indSetA`` and ``indSetB`` are used to specify the pairs of
         control points that are to be linked with linear variables. If
@@ -2324,8 +2325,9 @@ class DVConstraints:
         Examples
         --------
         >>> # Make two sets of controls points move the same amount:
-        >>> lIndex = DVGeo.getLocalIndex(1) # Volume 2
-        >>> indSetA = []; indSetB = [];
+        >>> lIndex = DVGeo.getLocalIndex(1)  # Volume 2
+        >>> indSetA = []
+        ... indSetB = []
         >>> for i in range(lIndex.shape[0]):
         >>>     indSetA.append(lIndex[i, 0, 0])
         >>>     indSetB.append(lIndex[i, 0, 1])
@@ -2345,7 +2347,7 @@ class DVConstraints:
             DVGeo = DVGeo.children[childName]
 
         if len(indSetA) != len(indSetB):
-            raise Error("The length of the supplied indices are not " "the same length")
+            raise Error("The length of the supplied indices are not the same length")
 
         if name is None:
             conName = "%s_linear_constraint_%d" % (self.name, len(self.linearCon))
@@ -2485,9 +2487,7 @@ class DVConstraints:
         # Project the actual location we were give:
         up, down, fail = geo_utils.projectNode(position, axis, p0, p1 - p0, p2 - p0)
         if fail > 0:
-            raise Error(
-                "There was an error projecting a node " "at (%f, %f, %f) with normal (%f, %f, %f)." % (position)
-            )
+            raise Error("There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)." % (position))
 
         self.constraints[typeName][conName] = GearPostConstraint(
             conName,
@@ -2811,8 +2811,8 @@ class DVConstraints:
                 axis = axis / np.linalg.norm(axis)
                 if len(axis) != 3:
                     raise Error("Axis array must contain 3 elements")
-            except ValueError:
-                raise Error("Axis must be a string or a 3 element array")
+            except ValueError as e:
+                raise Error("Axis must be a string or a 3 element array") from e
 
         typeName = "projAreaCon"
         if typeName not in self.constraints:
@@ -3322,7 +3322,7 @@ class DVConstraints:
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         if nPts < 5:
-            raise Error("nPts should be at least 5 \n " "while nPts = %d is given." % nPts)
+            raise Error("nPts should be at least 5 \n while nPts = %d is given." % nPts)
 
         # Create mesh of intersections
         ptList = [start, end]
@@ -3407,7 +3407,7 @@ class DVConstraints:
 
         Examples
         --------
-        >>> DVCon.addMonotonicConstraints('chords', 1.0)
+        >>> DVCon.addMonotonicConstraints("chords", 1.0)
         """
         self._checkDVGeo(DVGeoName)
 
@@ -3438,7 +3438,7 @@ class DVConstraints:
         )
 
     def _checkDVGeo(self, name="default"):
-        """check if DVGeo exists"""
+        """Check if DVGeo exists"""
         if name not in self.DVGeometries.keys():
             raise Error(
                 "A DVGeometry object must be added to DVCon before "
@@ -3618,7 +3618,7 @@ class DVConstraints:
 
     def _generateCircle(self, origin, rotAxis, radius, zeroAxis, angleCW, angleCCW, nPts):
         """
-        generate the coordinates for a circle. The user should not have to call this
+        Generate the coordinates for a circle. The user should not have to call this
         directly.
 
         Parameters

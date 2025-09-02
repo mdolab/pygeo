@@ -49,9 +49,9 @@ header-includes: \usepackage{subcaption}
 ---
 
 # Summary
-Geometry parameterization is a key challenge in shape optimization. 
+Geometry parameterization is a key challenge in shape optimization.
 Parameterizations must accurately capture the design intent and perform well in optimization.
-In multidisciplinary design optimization (MDO), the parameterization must additionally represent the shape consistently across each discipline. 
+In multidisciplinary design optimization (MDO), the parameterization must additionally represent the shape consistently across each discipline.
 
 pyGeo is a geometry package for three-dimensional shape manipulation tailored for aerodynamic and multidisciplinary design optimization.
 It provides several methods for geometry parameterization, geometric constraints, and utility functions for geometry manipulation.
@@ -77,18 +77,18 @@ The choice of parameterization depends on the user's experience, the geometry de
 
 ### Free-form Deformation
 The FFD method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches [@Zhang2018a].
-This approach embeds the entire reference geometry in a parameterized volume. 
-The set of control points that determines the shape of the volume is displaced to manipulate the points inside. 
+This approach embeds the entire reference geometry in a parameterized volume.
+The set of control points that determines the shape of the volume is displaced to manipulate the points inside.
 The user can have a high degree of control over the geometry by selecting different control point densities and locations.
 
 Individual control points can be moved to obtain local shape modifications.
 In pyGeo, these are referred to as _local_ design variables because a single control point is affected.
 Conversely, it is also common to define geometric operations involving a collection of control points across the entire FFD block.
 These are referred to as _global_ design variables in pyGeo.
-For example, wing twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. 
+For example, wing twist variables can be defined as rotations of the control points about a reference axis that runs along the wing.
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
 
-Design variables formulated from groupings of FFD control points often exhibit ill-conditioning. 
+Design variables formulated from groupings of FFD control points often exhibit ill-conditioning.
 A parameterization based on singular value decomposition is also possible within pyGeo to alleviate this issue [@Wu2022b].
 
 ![Examples of common wing planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdf)
@@ -98,7 +98,7 @@ In addition to the basic FFD implementation, pyGeo offers two additional feature
 #### Hierarchical FFD
 FFD objects can be organized in a hierarchical structure within pyGeo.
 Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD block to enable modifications on a subset of the entire geometry.
-pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. 
+pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry.
 One of the advantages of using this approach is that each FFD block can have its own independent reference axis to be used for global design variables such as rotations and scaling.
 \autoref{fig:ffd_child} shows a case where the parent FFD block is used to manipulate the shape of a blended wing body aircraft while its control surface is deformed using a child FFD block.
 

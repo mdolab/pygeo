@@ -69,7 +69,7 @@ class DVGeometryVSP(DVGeoSketch):
       >>> from pygeo import DVGeometryVSP
       >>> DVGeo = DVGeometryVSP("wing.vsp3", MPI_COMM_WORLD)
       >>> # Add a set of coordinates Xpt into the object
-      >>> DVGeo.addPointSet(Xpt, 'myPoints')
+      >>> DVGeo.addPointSet(Xpt, "myPoints")
 
     """
 

@@ -11,7 +11,7 @@ from . import euclideanNorm
 
 def areaTri(p0, p1, p2):
     """
-    compute area based on three point arrays
+    Compute area based on three point arrays
     """
     # convert p1 and p2 to v1 and v2
     v1 = p1 - p0

@@ -1,3 +1,7 @@
+# Ignore ruff and pre-commit config files
+ruff.toml
+.pre-commit-config.yaml
+
 *.pyc
 *.DS_Store
 pygeo.egg-info

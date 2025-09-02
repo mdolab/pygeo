@@ -121,7 +121,7 @@ class pyBlock:
             #             self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
         def symmZero(axis, coords, tol):
-            """set all coords within a certain tolerance of the symm plan to be exactly 0"""
+            """Set all coords within a certain tolerance of the symm plan to be exactly 0"""
 
             if axis.lower() == "x":
                 index = 0
@@ -164,7 +164,8 @@ class pyBlock:
 
             def uniformKnots(N, k):
                 """Simple function to generate N uniform knots of
-                order k"""
+                order k
+                """
 
                 knots = np.zeros(N + k)
                 knots[0 : k - 1] = 0.0
@@ -671,7 +672,8 @@ class pyBlock:
     def _setVolumeCoef(self):
         """Set the global coefficient array self.coef from the
         coefficients on the volumes. This typically needs only to be
-        called once when the object is created"""
+        called once when the object is created
+        """
 
         self.coef = np.zeros((self.topo.nGlobal, 3))
         for ivol in range(self.nVol):
