@@ -15,7 +15,8 @@ from .norm import eDist
 def edgeOrientation(e1, e2):
     """Compare two edge orientations. Basically if the two nodes are
     in the same order return 1 if they are in opposite order, return
-    1"""
+    1
+    """
 
     if [e1[0], e1[1]] == [e2[0], e2[1]]:
         return 1
@@ -30,7 +31,8 @@ def edgeOrientation(e1, e2):
 
 def faceOrientation(f1, f2):
     """Compare two face orientations f1 and f2 and return the
-    transform to get f1 back to f2"""
+    transform to get f1 back to f2
+    """
 
     if [f1[0], f1[1], f1[2], f1[3]] == [f2[0], f2[1], f2[2], f2[3]]:
         return 0
@@ -59,7 +61,8 @@ def quadOrientation(pt1, pt2):
     """Given two sets of 4 points in ndim space, pt1 and pt2,
     determine the orientation of pt2 wrt pt1
     This works for both exact quads and "loosely" oriented quads
-    ."""
+    .
+    """
     dist = np.zeros((4, 4))
     for i in range(4):
         for j in range(4):
@@ -130,7 +133,8 @@ def directionAlongSurface(surface, line):
 def curveDirection(curve1, curve2):
     """Determine if the direction of curve 1 is basically in the same
     direction as curve2. Return 1 for same direction, -1 for opposite
-    direction"""
+    direction
+    """
 
     N = 4
     s = np.linspace(0, 1, N)

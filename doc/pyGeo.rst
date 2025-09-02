@@ -3,4 +3,4 @@
 pyGeo
 -----
 .. autoclass:: pygeo.pyGeo.pyGeo
-    :members: 
+    :members:

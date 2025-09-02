@@ -833,7 +833,6 @@ class DVGeometryMulti:
 
         Parameters
         ----------
-
         iVol : int
             Index specifying the FFD volume.
 
@@ -1051,13 +1050,13 @@ class CompIntersection:
 
         # Set real or complex Fortran APIs
         self.dtype = dtype
-        if dtype == float:
+        if dtype is float:
             self.adtAPI = adtAPI.adtapi
             self.curveSearchAPI = curveSearchAPI.curvesearchapi
             self.intersectionAPI = intersectionAPI.intersectionapi
             self.utilitiesAPI = utilitiesAPI.utilitiesapi
             self.mpiType = MPI.DOUBLE
-        elif dtype == complex:
+        elif dtype is complex:
             self.adtAPI = adtAPI_cs.adtapi
             self.curveSearchAPI = curveSearchAPI_cs.curvesearchapi
             self.intersectionAPI = intersectionAPI_cs.intersectionapi

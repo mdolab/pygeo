@@ -123,7 +123,8 @@ def uniqueIndex(s, sHash=None):
 def pointReduce(points, nodeTol=1e-4):
     """Given a list of N points in ndim space, with possible
     duplicates, return a list of the unique points AND a pointer list
-    for the original points to the reduced set"""
+    for the original points to the reduced set
+    """
 
     # First
     points = np.array(points)

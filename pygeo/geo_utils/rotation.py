@@ -134,7 +134,8 @@ def reverseCols(inArray):
 
 def orientArray(index, inArray):
     """Take an input array inArray, and rotate/flip according to the index
-    output from quadOrientation (in orientation.py)"""
+    output from quadOrientation (in orientation.py)
+    """
 
     if index == 0:
         outArray = inArray.copy()

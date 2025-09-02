@@ -8,7 +8,8 @@ import numpy as np
 
 def area2(hedge, point):
     """Determines the area of the triangle formed by a hedge and
-    an external point"""
+    an external point
+    """
 
     pa = hedge.twin.origin
     pb = hedge.origin

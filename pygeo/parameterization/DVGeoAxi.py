@@ -18,8 +18,7 @@ class _AxiTransform:
     for axi-symmetric FFD. Also expands them back to their original annular location
 
     Parameters
-    -----------
-
+    ----------
     pts: (n,3)
         array of points to be transformed
 
@@ -118,7 +117,7 @@ class _AxiTransform:
         self.c_pts[:, self.gamma_idx] = 0.0  # no need to store zeros
 
     def expand(self, new_c_pts):
-        """given new collapsed points, re-expands them into physical space"""
+        """Given new collapsed points, re-expands them into physical space"""
 
         self.c_pts = new_c_pts
         if self.complex:
@@ -213,7 +212,7 @@ class DVGeometryAxi(DVGeometry):
             isComplex = kwargs.pop("complex")
             warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
-        super().__init__(fileName, isComplex=isComplex, child=child, *args, **kwargs)
+        super().__init__(fileName, *args, isComplex=isComplex, child=child, **kwargs)
 
         self.center = center
         self.collapse_into = collapse_into
@@ -239,7 +238,8 @@ class DVGeometryAxi(DVGeometry):
             Flag determine if the coordinates are projected into the
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
-            exactly what they are doing."""
+            exactly what they are doing.
+        """
 
         xform = self.axiTransforms[ptName] = _AxiTransform(points, self.center, self.collapse_into, self.complex)
 
@@ -255,8 +255,9 @@ class DVGeometryAxi(DVGeometry):
         return coords
 
     def computeTotalJacobian(self, ptSetName, config=None):
-        """compute the total point jacobian in CSR format since we
-        need this for TACS"""
+        """Compute the total point jacobian in CSR format since we
+        need this for TACS
+        """
 
         super().computeTotalJacobian(ptSetName, config)
         if self.JT[ptSetName] is not None:
