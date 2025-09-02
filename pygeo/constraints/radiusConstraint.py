@@ -90,16 +90,8 @@ class RadiusConstraint(GeometricConstraint):
 
         # Compute the radius of curvature
         A = xi1 * (eta2 - eta3) - eta1 * (xi2 - xi3) + xi2 * eta3 - xi3 * eta2
-        B = (
-            (xi1**2 + eta1**2) * (eta3 - eta2)
-            + (xi2**2 + eta2**2) * (eta1 - eta3)
-            + (xi3**2 + eta3**2) * (eta2 - eta1)
-        )
-        C = (
-            (xi1**2 + eta1**2) * (xi2 - xi3)
-            + (xi2**2 + eta2**2) * (xi3 - xi1)
-            + (xi3**2 + eta3**2) * (xi1 - xi2)
-        )
+        B = (xi1**2 + eta1**2) * (eta3 - eta2) + (xi2**2 + eta2**2) * (eta1 - eta3) + (xi3**2 + eta3**2) * (eta2 - eta1)
+        C = (xi1**2 + eta1**2) * (xi2 - xi3) + (xi2**2 + eta2**2) * (xi3 - xi1) + (xi3**2 + eta3**2) * (xi1 - xi2)
         D = (
             (xi1**2 + eta1**2) * (xi3 * eta2 - xi2 * eta3)
             + (xi2**2 + eta2**2) * (xi1 * eta3 - xi3 * eta1)

@@ -52,7 +52,7 @@ class PointSelect:
                 )
 
         elif psType == "ijkBounds":
-            if not ("ijkBounds" in kwargs):
+            if "ijkBounds" not in kwargs:
                 raise ValueError(
                     "ijkBounds selection method requires a dictonary with the specific ijkBounds for each volume."
                 )
@@ -125,7 +125,8 @@ class PointSelect:
 
     def getPoints(self, points):
         """Take in a list of points and return the ones that statify
-        the point select class."""
+        the point select class.
+        """
         ptList = []
         indList = []
         if self.type == "box":
@@ -154,7 +155,8 @@ class PointSelect:
 
         You can only use this method if you initialized PointSelect with 'ijkBounds' option.
 
-        DVGeo : DVGeo object"""
+        DVGeo : DVGeo object
+        """
 
         # Initialize list to hold indices in the DVGeo ordering
         indList = []

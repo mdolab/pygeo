@@ -288,7 +288,8 @@ class pyGeo:
     ):
         """Create a lifting surface by distributing the cross
         sections. See pyGeo module documentation for information on
-        the most commonly used options."""
+        the most commonly used options.
+        """
 
         if X is not None:
             Xsec = np.array(X)
@@ -422,7 +423,7 @@ class pyGeo:
             for i in range(N):
                 if curves[i] is not None:
                     for j in range(len(newKnots)):
-                        if not newKnots[j] in curves[i].t:
+                        if newKnots[j] not in curves[i].t:
                             curves[i].insertKnot(newKnots[j], mult[j])
 
             # If we want a pinched tip will will zero everything here.
@@ -854,7 +855,8 @@ class pyGeo:
 
     def _calcConnectivity(self, nodeTol, edgeTol):
         """This function attempts to automatically determine the connectivity
-        between the patches"""
+        between the patches
+        """
 
         # Calculate the 4 corners and 4 midpoints for each surface
 
