@@ -174,6 +174,7 @@ class RadiusConstraint(GeometricConstraint):
         to the open file handle
         """
         r, c = self.computeCircle(self.coords)
+        p1, p2, p3 = self.splitPointSets(self.coords)
 
         # Compute origin and unit vectors (xi, eta) of 2d space
         _, nxi, neta = self.computeReferenceFrames(self.coords)
@@ -196,3 +197,22 @@ class RadiusConstraint(GeometricConstraint):
         for i in range(self.nCon):
             for j in range(nres):
                 handle.write("%d %d\n" % (i * nres + j + 1, i * nres + (j + 1) % nres + 1))
+        
+        handle.write("Zone T=%s_circ_points\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (self.nCon * 3*2, self.nCon * 3))
+        handle.write("DATAPACKING=POINT\n")
+        
+        for i in range(self.nCon):
+            for pt_dir in [p1, p2, p3]:
+                # for each con plot the vecotrs from the center to the coord points defining the circle
+                pt1 = c[i]
+                pt2 = pt_dir[i]
+                handle.write(f"{pt1[0]:f} {pt1[1]:f} {pt1[2]:f}\n")
+                handle.write(f"{pt2[0]:f} {pt2[1]:f} {pt2[2]:f}\n")
+        
+        # write out the elements
+        for i in range(self.nCon*3):
+            handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
+        
+        
