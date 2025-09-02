@@ -85,7 +85,7 @@ lower_rear_idx = DVGeo.getLocalIndex(0)[:, 0, 1]
 upper_front_idx = DVGeo.getLocalIndex(0)[:, 1, 0]
 upper_rear_idx = DVGeo.getLocalIndex(0)[:, 1, 1]
 
-currentDV = DVGeo.getValues()["shape"]
+currentDV = DVGeo.getDesignVars()["shape"]
 newDV = currentDV.copy()
 
 # add a constant offset (upward) to the lower points, plus a linear ramp and a trigonometric local change

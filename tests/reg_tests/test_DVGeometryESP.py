@@ -384,7 +384,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
             # make sure that at least one derivative is nonzero
             self.assertGreater(biggest_deriv, 0.005)
 
-            Composite_FFD = DVGeo.getValues()
+            Composite_FFD = DVGeo.getDesignVars()
             handler.root_add_val("Composite DVs :", Composite_FFD["espComp"], rtol=1e-12, atol=1e-12)
 
 
