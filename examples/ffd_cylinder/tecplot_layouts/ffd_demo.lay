@@ -6,7 +6,7 @@ $!VarSet |LFDSFN2| = '"StandardSyntax" "1.0" "FEALoaderVersion" "443" "FILENAME_
 $!VarSet |LFDSFN3| = '"pointset_cylinder.dat"'
 $!VarSet |LFDSVL3| = '"X" "Y" "Z" "Node UserID" "Element UserID" "Material ID" "Part ID" "Property ID"'
 $!SetStyleBase Factory
-$!CreateColorMap 
+$!CreateColorMap
   Name = 'Sequential - Viridis'
   NumControlPoints = 11
   ControlPoint 1
@@ -185,7 +185,7 @@ $!CreateColorMap
       B = 37
       }
     }
-$!GlobalPaper 
+$!GlobalPaper
   PaperSizeInfo
     {
     Letter
@@ -198,7 +198,7 @@ $!GlobalPaper
       BottomHardClipOffset = 0.125
       }
     }
-$!Page 
+$!Page
   Name = 'Untitled'
   PaperAttributes
     {
@@ -239,7 +239,7 @@ $!ReadDataSet  '|LFDSFN3|'
   VarNameList = '|LFDSVL3|'
 $!RemoveVar |LFDSVL3|
 $!RemoveVar |LFDSFN3|
-$!FrameLayout 
+$!FrameLayout
   ShowBorder = No
   ShowHeader = No
   HeaderColor = Red
@@ -250,15 +250,15 @@ $!FrameLayout
     }
   Width = 7.1902
   Height = 5.5217
-$!ThreeDAxis 
+$!ThreeDAxis
   AspectRatioLimit = 25
   BoxAspectRatioLimit = 25
 $!PlotType  = Cartesian3D
 $!FrameName  = 'Frame 001'
-$!GlobalTime 
+$!GlobalTime
   SolutionTime = 0
 $!ActiveFieldMaps  =  [1-3]
-$!GlobalRGB 
+$!GlobalRGB
   RangeMin = 0
   RangeMax = 1
 $!GlobalContour  1
@@ -405,7 +405,7 @@ $!GlobalContour  8
       CMax = 1
       }
     }
-$!GlobalScatter 
+$!GlobalScatter
   Var = 4
   RelativeSize = 9.06E-06
   Legend
@@ -584,7 +584,7 @@ $!FieldMap  [3]
     {
     LightingEffect = Gouraud
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     VarNum = 1
@@ -598,7 +598,7 @@ $!ThreeDAxis
     VarNum = 3
     }
 $!View Fit
-$!ThreeDAxis 
+$!ThreeDAxis
   AxisMode = XYZDependent
   XYDepXToYRatio = 1
   DepXToYRatio = 1
@@ -611,7 +611,7 @@ $!ThreeDAxis
       Y = 39.811
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   XDetail
     {
     ShowAxis = No
@@ -623,7 +623,7 @@ $!ThreeDAxis
       Edge = 1
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   YDetail
     {
     ShowAxis = No
@@ -635,7 +635,7 @@ $!ThreeDAxis
       Edge = 3
       }
     }
-$!ThreeDAxis 
+$!ThreeDAxis
   ZDetail
     {
     ShowAxis = No
@@ -862,7 +862,7 @@ $!SliceAttributes  8
     LightingEffect = Gouraud
     SurfaceTranslucency = 10
     }
-$!StreamAttributes 
+$!StreamAttributes
   StreamTiming
     {
     MarkSize = 1
@@ -879,7 +879,7 @@ $!StreamAttributes
       }
     }
   MaxSteps = 10000
-$!GlobalThreeD 
+$!GlobalThreeD
   AxisScaleFact
     {
     X = 1
@@ -910,7 +910,7 @@ $!GlobalThreeD
   SymbolLiftFraction = 0.6
   VectorLiftFraction = 0.7
   NearPlaneFraction = 0.1
-$!ThreeDView 
+$!ThreeDView
   PSIAngle = 145.658
   ThetaAngle = 122.146
   AlphaAngle = -61.2571
@@ -921,14 +921,14 @@ $!ThreeDView
     Z = -7.880540864100743
     }
   ViewWidth = 2.23551
-$!FieldLayers 
+$!FieldLayers
   ShowMesh = No
   ShowScatter = Yes
   ShowShade = Yes
   UseTranslucency = Yes
-$!StreamtraceLayers 
+$!StreamtraceLayers
   Show = No
-$!AttachText 
+$!AttachText
   AnchorPos
     {
     X = 11.50054224588385
@@ -940,7 +940,7 @@ $!AttachText
     Height = 24
     }
   Text = 'j'
-$!AttachText 
+$!AttachText
   AnchorPos
     {
     X = 25.5890762101942
@@ -952,7 +952,7 @@ $!AttachText
     Height = 24
     }
   Text = 'i'
-$!AttachText 
+$!AttachText
   AnchorPos
     {
     X = 68.89110716750464
@@ -964,7 +964,7 @@ $!AttachText
     Height = 24
     }
   Text = 'k'
-$!AttachGeom 
+$!AttachGeom
   AnchorPos
     {
     X = 0.6066569915452564
@@ -976,9 +976,9 @@ $!AttachGeom
   RawData
 1
 2
-0 0 
-0.163860067725 0.109240040183 
-$!AttachGeom 
+0 0
+0.163860067725 0.109240040183
+$!AttachGeom
   AnchorPos
     {
     X = -0.3628483749506248
@@ -990,9 +990,9 @@ $!AttachGeom
   RawData
 1
 2
-5.57387735967E-09 2.23137384125E-08 
-0.191170066595 -0.0273099914193 
-$!AttachGeom 
+5.57387735967E-09 2.23137384125E-08
+0.191170066595 -0.0273099914193
+$!AttachGeom
   AnchorPos
     {
     X = -0.7497401878715156
@@ -1004,9 +1004,9 @@ $!AttachGeom
   RawData
 1
 3
-0 0 
-0 0.15020506084 
-0 0.282203435898 
+0 0
+0 0.15020506084
+0 0.282203435898
 $!FrameControl ActivateByNumber
   Frame = 1
 $!SetStyleBase Config

@@ -3,4 +3,4 @@
 DVGeometry
 ----------
 .. autoclass:: pygeo.parameterization.DVGeo.DVGeometry
-    :members: 
+    :members:

@@ -26,7 +26,7 @@ except ImportError:
 @contextmanager
 def stdout_redirected(flag, to=os.devnull):
     """
-    import os
+    Import os
 
     with stdout_redirected(to=filename):
         print("from Python")
@@ -102,7 +102,7 @@ class DVGeometryESP(DVGeoSketch):
       >>> from pygeo import DVGeometryESP
       >>> DVGeo = DVGeometryESP("wing.csm", MPI_COMM_WORLD)
       >>> # Add a set of coordinates Xpt into the object
-      >>> DVGeo.addPointSet(Xpt, 'myPoints')
+      >>> DVGeo.addPointSet(Xpt, "myPoints")
     """
 
     def __init__(
@@ -215,7 +215,7 @@ class DVGeometryESP(DVGeoSketch):
                         except ocsm.OcsmError as e:
                             if e.value == "ILLEGAL_PTMR_INDEX":
                                 # I don't think we should ever make it here if the GetPmtr check is correct
-                                raise Error("Column or row index out of range in design parameter " + pmtrName)
+                                raise Error("Column or row index out of range in design parameter " + pmtrName) from e
 
                 if pmtrType == ocsmExternal:
                     self.csmDesPmtrs[pmtrName] = ESPParameter(pmtrName, pmtrIndex, numRow, numCol, baseValue)
