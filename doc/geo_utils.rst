@@ -5,6 +5,11 @@ File IO
 .. automodule:: pygeo.geo_utils.file_io
     :members:
 
+Mesh Generation
+~~~~~~~~~~~~~~~
+.. automodule:: pygeo.geo_utils.mesh_generation
+    :members:
+
 FFD Generation
 ~~~~~~~~~~~~~~
 .. automodule:: pygeo.geo_utils.ffd_generation
