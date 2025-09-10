@@ -192,7 +192,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 child_ffd.addPointSet(DVGeo.points[pointSet], pointSet)
 
     def nom_add_discipline_coords(self, discipline, points=None, DVGeoName=None, **kwargs):
-        """Add the coordinates for an MPhys discipline to the DVGeo object.
+        r"""Add the coordinates for an MPhys discipline to the DVGeo object.
 
         Calling this method will add both and input and an output to the DVGeo's OpenMDAO component. The input should be
         connected to a component that provides the coordinates of the "baseline" geometry (e.g a mesh coordinate
@@ -208,7 +208,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             first call to the `compute` method.
         DVGeoName : str, optional
             The name of the DVGeo to add the points to, necessary if there are multiple DVGeo objects. By default `None`.
-        \*\*kwargs
+        **kwargs
             Any additional keyword arguments to pass to the `addPointSet` method of the DVGeo object.
         """
         inputName = discipline.COORDINATES_INPUT
