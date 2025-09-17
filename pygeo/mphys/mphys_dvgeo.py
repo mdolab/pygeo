@@ -32,6 +32,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.options.declare("options", default=None)
         self.options.declare("DVGeoInfo", default=None)
 
+        # Need to initialize this here rather than `setup`,
+        # since `nom_add_discipline_coords` can be called before `setup`
+        self.omPtInOutDict = {}
+
     def setup(self):
         # create a constraints object to go with this DVGeo(s)
         self.DVCon = DVConstraints()
@@ -98,10 +102,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
         for var in inputs.keys():
-            # check that the input name matches the convention for points
-            if var[:2] == "x_":
-                # trim the _in and add a "0" to signify that these are initial conditions initial
-                var_out = var[:-3] + "0"
+            # check that the input is in pointset dict
+            if var in self.omPtInOutDict:
+                # retrieve corresponding output name
+                var_out = self.omPtInOutDict[var]
+                # add pointset if it doesn't already exist
                 if var_out not in self.omPtSetList:
                     self.nom_addPointSet(inputs[var], var_out, add_output=False)
 
@@ -187,17 +192,38 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 child_ffd.addPointSet(DVGeo.points[pointSet], pointSet)
 
     def nom_add_discipline_coords(self, discipline, points=None, DVGeoName=None, **kwargs):
-        # TODO remove one of these methods to keep only one method to add pointsets
+        r"""Add the coordinates for an MPhys discipline to the DVGeo object.
+
+        Calling this method will add both and input and an output to the DVGeo's OpenMDAO component. The input should be
+        connected to a component that provides the coordinates of the "baseline" geometry (e.g a mesh coordinate
+        subsystem), and the output will be the coordinates of the parameterized geometry after the design variables have
+        been applied.
+
+        Parameters
+        ----------
+        discipline : MPhysGeometry class
+            MPhysGeometry class for the relevant discipline, e.g `MPhysVariables.Aerodynamics.Surface.Geometry` or `MPhysVariables.Structure.Geometry`
+        points : array, size (N,3), optional
+            The coordinates to embed. By default `None`, in which case the points will be added automatically during the
+            first call to the `compute` method.
+        DVGeoName : str, optional
+            The name of the DVGeo to add the points to, necessary if there are multiple DVGeo objects. By default `None`.
+        **kwargs
+            Any additional keyword arguments to pass to the `addPointSet` method of the DVGeo object.
+        """
+        inputName = discipline.COORDINATES_INPUT
+        outputName = discipline.COORDINATES_OUTPUT
+        self.omPtInOutDict[inputName] = outputName
         if points is None:
             # no pointset info is provided, just do a generic i/o. We will add these points during the first compute
-            self.add_input("x_%s_in" % discipline, distributed=True, shape_by_conn=True)
-            self.add_output("x_%s0" % discipline, distributed=True, copy_shape="x_%s_in" % discipline)
+            self.add_input(inputName, distributed=True, shape_by_conn=True)
+            self.add_output(outputName, distributed=True, copy_shape=inputName)
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False, DVGeoName=DVGeoName, **kwargs)
-            self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
-            self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
+            self.nom_addPointSet(points, outputName, add_output=False, DVGeoName=DVGeoName, **kwargs)
+            self.add_input(inputName, distributed=True, val=points.flatten())
+            self.add_output(outputName, distributed=True, val=points.flatten())
 
     def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
