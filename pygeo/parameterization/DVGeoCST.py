@@ -94,7 +94,7 @@ class DVGeometryCST(BaseDVGeometry):
         numCST=8,
         idxChord=0,
         idxVertical=1,
-        comm=MPI.COMM_WORLD,
+        comm=None,
         isComplex=False,
         debug=False,
         tolTE=60.0,
@@ -104,10 +104,9 @@ class DVGeometryCST(BaseDVGeometry):
         if not prefoilInstalled:
             raise ImportError("preFoil is not installed and is required to use DVGeometryCST.")
 
-        super().__init__(datFile, name=name)
+        super().__init__(datFile, name=name, comm=comm)
         self.xIdx = idxChord
         self.yIdx = idxVertical
-        self.comm = comm
         self.isComplex = isComplex
         if isComplex:
             self.dtype = complex
@@ -548,7 +547,7 @@ class DVGeometryCST(BaseDVGeometry):
         for pointSet in self.updated:
             self.updated[pointSet] = False
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
         Values are returned in a dictionary format that would be suitable for a subsequent call to setValues()
@@ -564,6 +563,24 @@ class DVGeometryCST(BaseDVGeometry):
             DVs[dvName] = self.DVs[dvName].value
 
         return DVs
+
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = {}
+        upperBounds = {}
+        for dvName, dv in self.DVs.items():
+            lowerBounds[dvName] = dv.lower
+            upperBounds[dvName] = dv.upper
+        return lowerBounds, upperBounds
 
     def getVarNames(self, **kwargs):
         """
@@ -893,6 +910,16 @@ class DVGeometryCST(BaseDVGeometry):
         self.updated[ptSetName] = True
 
         return points.copy()
+
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        return self.points[ptSetName]["points"]
 
     def getNDV(self):
         """

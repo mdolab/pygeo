@@ -11,7 +11,6 @@ from abc import abstractmethod
 from collections import OrderedDict
 
 # External modules
-from mpi4py import MPI
 import numpy as np
 from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D
 
@@ -64,8 +63,8 @@ class DVGeoSketch(BaseDVGeometry):
 
     """
 
-    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, projTol=0.01, name=None):
-        super().__init__(fileName=fileName, name=name)
+    def __init__(self, fileName, comm=None, scale=1.0, projTol=0.01, name=None):
+        super().__init__(fileName=fileName, name=name, comm=comm)
 
         # this scales coordinates from model to mesh geometry
         self.modelScale = scale
@@ -74,7 +73,6 @@ class DVGeoSketch(BaseDVGeometry):
         self.projTol = projTol * self.meshScale  # default input is in meters.
 
         self.updatedJac = {}
-        self.comm = comm
 
         # Initial list of DVs
         self.DVs = OrderedDict()
@@ -121,13 +119,13 @@ class DVGeoSketch(BaseDVGeometry):
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet
-        values = u.T @ self.convertDictToSensitivity(self.getValues())
+        values = u.T @ self.convertDictToSensitivity(self.getDesignVars())
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
 
         self.useComposite = True
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format
@@ -146,6 +144,29 @@ class DVGeoSketch(BaseDVGeometry):
             dvDict = self.mapXDictToComp(dvDict)
 
         return dvDict
+
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = OrderedDict()
+        upperBounds = OrderedDict()
+        for dvName in self.DVs:
+            lowerBounds[dvName] = self.DVs[dvName].lower
+            upperBounds[dvName] = self.DVs[dvName].upper
+
+        if self.useComposite:
+            lowerBounds = self.mapXDictToComp(lowerBounds)
+            upperBounds = self.mapXDictToComp(upperBounds)
+
+        return lowerBounds, upperBounds
 
     def getVarNames(self, pyOptSparse=False):
         """

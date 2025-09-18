@@ -217,7 +217,7 @@ class TestDVGeoMulti(unittest.TestCase):
             DVGeo.addPointSet(pts_dtype, ptSetName, comm=comm, applyIC=True)
 
             # Apply twist to the two intersecting boxes
-            dvDict = DVGeo.getValues()
+            dvDict = DVGeo.getDesignVars()
             dvDict["box1_twist"] = 2
             dvDict["box2_twist"] = 2
             DVGeo.setDesignVars(dvDict)
@@ -262,9 +262,9 @@ class TestDVGeoMulti(unittest.TestCase):
         funcSens = DVGeo_real.totalSensitivity(dIdpt, ptSetName, comm=comm)
 
         # Compute FD and CS derivatives
-        dvDict_real = DVGeo_real.getValues()
+        dvDict_real = DVGeo_real.getDesignVars()
         funcSensFD = {}
-        dvDict_complex = DVGeo_complex.getValues()
+        dvDict_complex = DVGeo_complex.getDesignVars()
         funcSensCS = {}
 
         stepSize_FD = 1e-5
@@ -423,7 +423,7 @@ class TestDVGeoMulti(unittest.TestCase):
         DVGeo.addPointSet(localPts, ptSetName, comm=comm, applyIC=True)
 
         # Apply twist to box 2
-        dvDict = DVGeo.getValues()
+        dvDict = DVGeo.getDesignVars()
         dvDict["box2_twist"] = 10
         DVGeo.setDesignVars(dvDict)
 
