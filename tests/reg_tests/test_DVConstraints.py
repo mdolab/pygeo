@@ -367,6 +367,94 @@ class RegTestPyGeo(unittest.TestCase):
                 funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
             )
 
+    def test_distance_box(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_distance_box.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon("box")
+            DVGeo.addLocalDV("local_x", lower=-0.5, upper=0.5, axis="x", scale=1)
+            
+            moving_pts = np.array([
+                [0.0, 0.0, 0.0],
+                [-0.5, 0.0, 2.0],
+                [0.5, 0.1,  7.0],
+            ])
+            
+            anchored_pts = np.array([
+                [0.0, 0.0, -1.0], # this point is outside the FFD, but it shouldn't matter
+                [-0.5, 0.0, 0.0],
+                [0.5, 0.1, 10.0], 
+            ])
+            
+            DVCon.addDistanceConstraints(anchored_pts, moving_pts, scaled=False)
+            DVCon.addDistanceConstraints(anchored_pts, moving_pts, scaled=True)
+            DVCon.writeTecplot('distCon0.dat')
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
+            print('funcs', funcs)
+            DVCon.writeTecplot('distCon1.dat')
+
+            # Check that unscaled thicknesses are computed correctly at baseline
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_0"], np.arange(1,4), name="distance_0_base", rtol=1e-12, atol=1e-12
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_1"],  np.ones(len(moving_pts)), name="distance_1_base", rtol=1e-7, atol=1e-7
+            )
+            DVs = DVGeo.getValues()
+            DVGeo.setDesignVars({"local_x": 0.5*np.ones_like(DVs["local_x"])})
+            funcs = {}
+            DVCon.evalFunctions(funcs)
+            
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_0"], np.sqrt(np.arange(1,4)**2 + 0.5**2*np.ones(3)), name="distance_0_altered", rtol=1e-12, atol=1e-12
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_1"], np.sqrt(np.arange(1,4)**2 + 0.5**2*np.ones(3))/np.arange(1,4), name="distance_1_altered", rtol=1e-12, atol=1e-12
+            )
+            
+    def test_distance_1D_c172(self, train=True, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_distance_1D_c172.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
+            DVGeo.addLocalDV("local_x", lower=-0.5, upper=0.5, axis="x", scale=1)
+            
+            # This line is below the geometry
+            
+            
+            anchored_pts = np.array([
+                [0.47, 0.0, 1e-2], 
+                [0.47, 0.0, 5.24], 
+            ])
+            
+            anchored_pts_1 = anchored_pts.copy()
+            anchored_pts_1[:,1] -= 1.0
+            
+            nCon = 5
+            
+            DVCon.addDistanceConstraints1D(anchored_pts, nCon, axis=[0, 1, 0], scaled=False)
+            DVCon.addDistanceConstraints1D(anchored_pts_1, nCon, axis=[0, 1, 0], scaled=False)
+            
+            DVCon.writeTecplot('distCon0.dat')
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
+            DVCon.writeTecplot('distCon1.dat')
+            
+
+            # Check that unscaled thicknesses are computed correctly at baseline
+            base_dis = funcs["DVCon1_distance_constraints_0"]
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_1"], base_dis + 1.0, name="distance_1_base", rtol=1e-12, atol=1e-12
+            )
+            DVs = DVGeo.getValues()
+            DVGeo.setDesignVars({"local_x": 0.5*np.ones_like(DVs["local_x"])})
+            funcs = {}
+            DVCon.evalFunctions(funcs)
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_0"], np.sqrt(base_dis**2 + 0.5**2*np.ones(5)), name="distance_altered", rtol=1e-12, atol=1e-12
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_distance_constraints_1"], np.sqrt((base_dis+1)**2 + 0.5**2*np.ones(5)), name="distance_1_altered", rtol=1e-12, atol=1e-12
+            )
+            
+
     def test_thickness2D(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_thickness2D.ref")
         with BaseRegTest(refFile, train=train) as handler:

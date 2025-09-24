@@ -1,3 +1,4 @@
+import os
 # External modules
 from mpi4py import MPI
 import numpy as np
@@ -31,6 +32,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.options.declare("type", default=None)
         self.options.declare("options", default=None)
         self.options.declare("DVGeoInfo", default=None)
+        self.options.declare("output_dir", default="./")
 
         # Need to initialize this here rather than `setup`,
         # since `nom_add_discipline_coords` can be called before `setup`
@@ -98,6 +100,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 self.DVCon.setDVGeo(DVGeo, name=DVConName)
 
         self.omPtSetList = []
+        self.call_counter = 0
 
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
@@ -124,6 +127,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # compute the DVCon constraint values
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
+        file_name = os.path.join(self.options['output_dir'], f"cons_{self.call_counter}.dat")
+        self.DVCon.writeTecplot(file_name)
 
         for constraintname in constraintfunc:
             # if any constraint returned a fail flag throw an error to OpenMDAO
@@ -135,6 +140,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # we ran a compute so the inputs changed. update the dvcon jac
         # next time the jacvec product routine is called
         self.update_jac = True
+        self.call_counter += 1
 
     def nom_addComponent(self, comp, ffd_file, triMesh, DVGeoName=None):
         """
@@ -759,6 +765,31 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeoName=DVGeoName,
             compNames=compNames,
             projected=projected,
+        )
+        self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
+
+    def nom_addDistanceConstraints1D(
+        self,
+        name,
+        ptList,
+        nCon,
+        axis,
+        scaled=True,
+        surfaceName="default",
+        DVGeoName="default",
+        compNames=None,
+        addToPyOpt=True,
+    ):
+        self.DVCon.addDistanceConstraints1D(
+            ptList,
+            nCon,
+            axis,
+            name=name,
+            scaled=scaled,
+            surfaceName=surfaceName,
+            DVGeoName=DVGeoName,
+            compNames=compNames,
+            addToPyOpt=addToPyOpt
         )
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
