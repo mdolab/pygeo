@@ -3006,7 +3006,7 @@ class DVGeometry(BaseDVGeometry):
                 optProb, globalVars, localVars, sectionlocalVars, spanwiselocalVars, ignoreVars, freezeVars
             )
 
-    def writeTecplot(self, fileName, solutionTime=None):
+    def writeTecplot(self, fileName, solutionTime=None, writeEmbedding=True):
         """Write the (deformed) current state of the FFD's to a tecplot file,
         including the children
 
@@ -3028,7 +3028,7 @@ class DVGeometry(BaseDVGeometry):
         vol_counter = 0
 
         # Write master volumes:
-        vol_counter += self._writeVols(f, vol_counter, solutionTime)
+        vol_counter += self._writeVols(f, vol_counter, solutionTime, writeEmbedding)
 
         closeTecplot(f)
         if len(self.points) > 0:
@@ -4567,16 +4567,19 @@ class DVGeometry(BaseDVGeometry):
 
         return Jacobian
 
-    def _writeVols(self, handle, vol_counter, solutionTime):
+    def _writeVols(self, handle, vol_counter, solutionTime, writeEmbedding):
         for i in range(len(self.FFD.vols)):
             writeTecplot3D(handle, "FFD_vol%d" % i, self.FFD.vols[i].coef, solutionTime)
             self.FFD.vols[i].computeData(recompute=True)
-            writeTecplot3D(handle, "embedding_vol", self.FFD.vols[i].data, solutionTime)
+
+            if writeEmbedding:
+                writeTecplot3D(handle, "embedding_vol", self.FFD.vols[i].data, solutionTime)
+
             vol_counter += 1
 
         # Write children volumes:
         for child in self.children.values():
-            vol_counter += child._writeVols(handle, vol_counter, solutionTime)
+            vol_counter += child._writeVols(handle, vol_counter, solutionTime, writeEmbedding)
 
         return vol_counter
 
