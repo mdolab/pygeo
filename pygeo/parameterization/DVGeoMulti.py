@@ -1,15 +1,14 @@
 # Standard Python modules
 from collections import OrderedDict
+from copy import deepcopy
 
 # External modules
 from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D
 from scipy import sparse
 from scipy.spatial.distance import cdist
-from copy import deepcopy
-from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D
-
 
 try:
     # External modules
