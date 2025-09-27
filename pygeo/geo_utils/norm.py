@@ -8,7 +8,7 @@ import numpy as np
 
 def euclideanNorm(inVec):
     """
-    perform the euclidean 2 norm of the vector inVec
+    Perform the euclidean 2 norm of the vector inVec
     required because linalg.norm() provides incorrect results for
     CS derivatives.
     """
@@ -56,7 +56,7 @@ def dot_b(a, b, dotb):
 
 def calculateCentroid(p0, v1, v2):
     """
-    take in a triangulated surface and calculate the centroid
+    Take in a triangulated surface and calculate the centroid
     """
     p0 = np.array(p0)
     p1 = np.array(v1) + p0
@@ -79,7 +79,7 @@ def calculateCentroid(p0, v1, v2):
 
 def calculateAverageNormal(p0, v1, v2):
     """
-    take in a triangulated surface and calculate the centroid
+    Take in a triangulated surface and calculate the centroid
     """
     p0 = np.array(p0)
 
@@ -95,7 +95,7 @@ def calculateAverageNormal(p0, v1, v2):
 
 def calculateRadii(centroid, p0, v1, v2):
     """
-    take the centroid and compute inner and outer radii of surface
+    Take the centroid and compute inner and outer radii of surface
     """
     p0 = np.array(p0)
     p1 = np.array(v1) + p0
@@ -126,7 +126,7 @@ def calculateRadii(centroid, p0, v1, v2):
 
 def computeDistToAxis(origin, coords, axis, dtype="d"):
     """
-    compute the distance of coords from the defined axis.
+    Compute the distance of coords from the defined axis.
     """
     # Compute the direction from each point to the origin
     dirVec = origin - coords

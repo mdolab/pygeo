@@ -46,7 +46,7 @@ def writeFFDFile(fileName, nBlocks, nx, ny, nz, points):
 
 def returnBlockPoints(corners, nx, ny, nz):
     """
-    corners needs to be 8 x 3
+    Corners needs to be 8 x 3
     """
     points = np.zeros([nx, ny, nz, 3])
 

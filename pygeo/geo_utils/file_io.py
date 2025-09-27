@@ -116,7 +116,7 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness
 
 
 def writeAirfoilFile(fileName, name, x, y):
-    """write an airfoil file"""
+    """Write an airfoil file"""
     f = open(fileName, "w")
     f.write("%s\n" % name)
 
@@ -152,7 +152,8 @@ def getCoordinatesFromFile(fileName):
 
 def readPlot3DSurfFile(fileName):
     """Read a plot3d file and return the points and connectivity in
-    an unstructured mesh format"""
+    an unstructured mesh format
+    """
 
     pts = None
 

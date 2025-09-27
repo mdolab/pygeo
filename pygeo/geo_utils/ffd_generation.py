@@ -48,27 +48,23 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
 
     .. code-block:: python
 
-        axes = ['k', 'j', 'i']
-        slices = np.array([
-            # Slice 1
-            [[[0, 0, 0], [1, 0, 0]],
-            [[0, 0.2, 0], [1, 0.2, 0]]],
-            # Slice 2
-            [[[0, 0, 2], [1, 0, 2]],
-            [[0, 0.2, 2], [1, 0.2, 2]]],
-            # Slice 3
-            [[[0.5, 0, 6], [1, 0, 6]],
-            [[0.5, 0.2, 6], [1, 0.2, 6]]],
-        ])
+        axes = ["k", "j", "i"]
+        slices = np.array(
+            [
+                # Slice 1
+                [[[0, 0, 0], [1, 0, 0]], [[0, 0.2, 0], [1, 0.2, 0]]],
+                # Slice 2
+                [[[0, 0, 2], [1, 0, 2]], [[0, 0.2, 2], [1, 0.2, 2]]],
+                # Slice 3
+                [[[0.5, 0, 6], [1, 0, 6]], [[0.5, 0.2, 6], [1, 0.2, 6]]],
+            ]
+        )
 
         N0 = 5
         N1 = 2
         N2 = 8
 
-        dist = [
-            ['left', 'linear', 'linear'],
-            ['cosine', 'linear', 'right']
-        ]
+        dist = [["left", "linear", "linear"], ["cosine", "linear", "right"]]
 
     """
 
