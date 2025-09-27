@@ -4138,7 +4138,6 @@ class FilletIntersection(Intersection):
         return compSens
 
     def project(self, ptSetName, newPts):
-
         # update the pointset unless we haven't figured out the intersections yet
         if len(self.compA.curvePts) > 0:  # TODO change to a first project flag or something
             if self.tangency:
