@@ -1632,9 +1632,9 @@ class Intersection:
         # flag to determine if we want to project nodes after intersection treatment
         self.projectFlag = project
 
-        if dtype == float:
+        if dtype is float:
             self.mpi_type = MPI.DOUBLE
-        elif dtype == complex:
+        elif dtype is complex:
             self.mpi_type = MPI.C_DOUBLE_COMPLEX
 
     def setSurface(self, comm):
