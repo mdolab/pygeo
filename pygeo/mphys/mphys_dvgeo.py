@@ -226,11 +226,31 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_output(outputName, distributed=True, val=points.flatten())
 
     def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, distributed=True, **kwargs):
+        """Add a pointset to the DVGeo object and create an output for it in the OpenMDAO component.
+
+        Parameters
+        ----------
+        points : numpy array
+            3D points to add to the DVGeo object, shape (N,3) or (3N,)
+        ptName : str
+            Name for the pointset
+        add_output : bool, optional
+            Whether to add the deformed points as an output of the component, by default True
+        DVGeoName : str, optional
+            The name of the DVGeo to add the points to, necessary if there are multiple DVGeo objects. By default `None`.
+        distributed : bool, optional
+            Whether the output of the component should be a distributed variable, by default True
+
+        Returns
+        -------
+        None or float
+            If using DVGeometryESP or DVGeometryVSP, returns the maximum distance between pointset and the CAD model
+        """
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
-        # DVGeoESP can return a value to check the pointset distribution
+        # DVGeoESP and DVGeoVSP can return a value to check the pointset distribution
         dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
