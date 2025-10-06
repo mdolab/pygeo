@@ -225,22 +225,18 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_input(inputName, distributed=True, val=points.flatten())
             self.add_output(outputName, distributed=True, val=points.flatten())
 
-    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
+    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, distributed=True, **kwargs):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
-        dMaxGlobal = None
-        if isinstance(DVGeo, DVGeometryESP):
-            # DVGeoESP can return a value to check the pointset distribution
-            dMaxGlobal = DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
-        else:
-            DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        # DVGeoESP can return a value to check the pointset distribution
+        dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
         if add_output:
             # add an output to the om component
-            self.add_output(ptName, distributed=True, val=points.flatten())
+            self.add_output(ptName, distributed=distributed, val=points.flatten())
 
         return dMaxGlobal
 
