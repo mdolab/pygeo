@@ -269,6 +269,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeometry object
             DVGeometry object held by this geometry component
         """
+        # Calling this function before setup is not allowed because the DVGeo object(s) do not exist yet
+        if not hasattr(self, "DVGeos"):
+            raise RuntimeError(
+                "Cannot call `nom_getDVGeo` before OM_DVGEOCOMP's `setup` method has been called. If you are calling this function in the `setup` method of a group containing an OM_DVGEOCOMP, move the call to `configure` instead."
+            ) from None
+
         # if we have multiple DVGeos use the one specified by name
         if self.multDVGeo:
             DVGeo = self.DVGeos[DVGeoName]

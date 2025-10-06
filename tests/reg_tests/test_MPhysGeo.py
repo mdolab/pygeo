@@ -562,5 +562,20 @@ class TestDVGeoMPhysESP(unittest.TestCase):
         commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-5)
 
 
+@unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
+class TestGetDVGeoError(unittest.TestCase):
+    # Make sure we get an error if we try to call nom_getDVGeo before setup
+    def test_getDVGeo_error(self):
+        class BadGroup(Group):
+            def setup(self):
+                geometryComp = OM_DVGEOCOMP(file=outerFFD, type="ffd")
+                self.add_subsystem("geometry", geometryComp, promotes=["*"])
+                geometryComp.nom_getDVGeo()
+
+        prob = Problem(model=BadGroup())
+        with self.assertRaises(RuntimeError):
+            prob.setup()
+
+
 if __name__ == "__main__":
     unittest.main()
