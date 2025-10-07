@@ -323,7 +323,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
 
                 self.add_constraint(f"geometry.{ptName}")
 
-        self.prob = Problem(model=FFDGroup())
+        self.prob = Problem(model=FFDGroup(), reports=False)
 
     def test_run_model(self):
         self.prob.setup()
@@ -404,7 +404,7 @@ class TestDVConMPhysBox(unittest.TestCase):
                 self.add_design_var("local")
                 self.add_objective(paramKwargs["name"])
 
-        p = Problem(model=BoxGeo())
+        p = Problem(model=BoxGeo(), reports=False)
         return p
 
     def test_undeformed_vals(self):
@@ -529,7 +529,7 @@ class TestDVGeoMPhysESP(unittest.TestCase):
 
                 self.add_constraint(f"geometry.{ptName}")
 
-        self.prob = Problem(model=ESPGroup())
+        self.prob = Problem(model=ESPGroup(), reports=False)
 
     def test_run_model(self):
         self.prob.setup()
@@ -572,7 +572,7 @@ class TestGetDVGeoError(unittest.TestCase):
                 self.add_subsystem("geometry", geometryComp, promotes=["*"])
                 geometryComp.nom_getDVGeo()
 
-        prob = Problem(model=BadGroup())
+        prob = Problem(model=BadGroup(), reports=False)
         with self.assertRaises(RuntimeError):
             prob.setup()
 
