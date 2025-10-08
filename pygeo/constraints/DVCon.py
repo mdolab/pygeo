@@ -600,7 +600,7 @@ class DVConstraints:
 
         self._checkDVGeo(DVGeoName)
 
-        coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
+        coords = self._generateGridIntersections(leList, teList, nSpan, nChord, surfaceName)
 
         # Get the total number of spanwise sections
         nSpanTotal = np.sum(nSpan)
@@ -751,24 +751,12 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         # Create mesh of intersections
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = np.zeros((nCon, 2, 3))
-        # Project all the points
-        for i in range(nCon):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i, 0] = up
-            coords[i, 1] = down
+        coords[:, 0], coords[:, 1] = self._projectToSurface(surfaceName, X, axis)
 
         # Create the thickness constraint object:
         coords = coords.reshape((nCon * 2, 3))
@@ -1121,36 +1109,18 @@ class DVConstraints:
             X = constr_line(s)
         coords = np.zeros((nSpan, 3, 3))
 
-        # Create surface intersections
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
-        for i in range(nSpan):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i, 0] = up
-            coords[i, 1] = down
+        up, down = self._projectToSurface(surfaceName, X, axis)
+        coords[:, 0, :] = up
+        coords[:, 1, :] = down
 
         # Calculate mid-points
         midPts = (coords[:, 0, :] + coords[:, 1, :]) / 2.0
 
         # Project to get leading edge point
-        lePts = np.zeros((nSpan, 3))
         chordDir = np.array(chordDir, dtype="d").flatten()
         chordDir /= np.linalg.norm(chordDir)
-        for i in range(nSpan):
-            # Project actual node:
-            lePts[i], fail = geo_utils.projectNodePosOnly(X[i], chordDir, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) in direction (%f, %f, %f)."
-                    % (X[i, 0], X[i, 1], X[i, 2], chordDir[0], chordDir[1], chordDir[2])
-                )
+        lePts, _ = self._projectToSurface(surfaceName, X, chordDir)
 
         # Check that points can form radius
         d = np.linalg.norm(coords[:, 0, :] - coords[:, 1, :], axis=1)
@@ -1394,26 +1364,13 @@ class DVConstraints:
         self._checkDVGeo(DVGeoName)
         # Create the points to constrain
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
 
-        coords = np.zeros((nCon, 2, 3))
-        # Project all the points
-        for i in range(nCon):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i, 0] = up
-            coords[i, 1] = down
+        up, down = self._projectToSurface(surfaceName, X, axis)
 
-        X = (1 - bias) * coords[:, 1] + bias * coords[:, 0]
+        X = (1 - bias) * down + bias * up
 
         # X is now what we want to constrain
         if lower is None:
@@ -1540,31 +1497,23 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = np.zeros((nCon, 4, 3))
         chordDir /= np.linalg.norm(np.array(chordDir, "d"))
+
         # Project all the points
-        for i in range(nCon):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
+        up, down = self._projectToSurface(surfaceName, X, axis)
+        coords[:, 0] = up
+        coords[:, 1] = down
 
-            coords[i, 0] = up
-            coords[i, 1] = down
-            height = np.linalg.norm(coords[i, 0] - coords[i, 1])
-            # Third point is the mid-point of those
-            coords[i, 2] = 0.5 * (up + down)
+        height = np.linalg.norm(coords[:, 0] - coords[:, 1], axis=1)
+        # Third point is the mid-point of those
+        coords[:, 2] = 0.5 * (coords[:, 0] + coords[:, 1])
 
-            # Fourth point is along the chordDir
-            coords[i, 3] = coords[i, 2] + 0.1 * height * chordDir
+        # Fourth point is along the chordDir
+        coords[:, 3] = coords[:, 2] + 0.1 * height[:, np.newaxis] * chordDir
 
         # Create the thickness constraint object:
         coords = coords.reshape((nCon * 4, 3))
@@ -1943,7 +1892,7 @@ class DVConstraints:
         else:
             conName = name
 
-        coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
+        coords = self._generateGridIntersections(leList, teList, nSpan, nChord, surfaceName)
 
         # Get the total number of spanwise sections
         nSpanTotal = np.sum(nSpan)
@@ -2473,8 +2422,6 @@ class DVConstraints:
         """
 
         self._checkDVGeo(DVGeoName)
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         typeName = "gearCon"
         if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
@@ -2485,9 +2432,9 @@ class DVConstraints:
             conName = name
 
         # Project the actual location we were give:
-        up, down, fail = geo_utils.projectNode(position, axis, p0, p1 - p0, p2 - p0)
-        if fail > 0:
-            raise Error("There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)." % (position))
+        up, down = self._projectToSurface(surfaceName, position, axis)
+        up = up.flatten()
+        down = down.flatten()
 
         self.constraints[typeName][conName] = GearPostConstraint(
             conName,
@@ -3319,8 +3266,6 @@ class DVConstraints:
 
         self._checkDVGeo(DVGeoName)
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         if nPts < 5:
             raise Error("nPts should be at least 5 \n while nPts = %d is given." % nPts)
 
@@ -3329,22 +3274,13 @@ class DVConstraints:
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nPts)
         X = constr_line(s)
-        coords = np.zeros((nPts, 3))
 
         # calculate the distance between coords, it should be uniform for all points
         eps = np.linalg.norm(X[1] - X[0])
 
         # Project all the points
-        for i in range(nPts):
-            # Project actual node:
-            up, _, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i] = up
-            # NOTE: we do not use the down projection
+        coords, _ = self._projectToSurface(surfaceName, X, axis)
+        # NOTE: we do not use the down projection
 
         typeName = "curvCon1D"
         if typeName not in self.constraints:
@@ -3474,16 +3410,63 @@ class DVConstraints:
             p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
         return p0, p1, p2
 
-    def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):
-        """
-        Internal function to generate the grid points (nSpan x nChord)
-        and to actual perform the intersections. This is in a separate
-        functions since addThicknessConstraints2D, and volume based
-        constraints use the same code. The list of projected
-        coordinates are returned.
+    def _projectToSurface(self, surfaceName, X, direction):
+        """Project points to a surface along given directions.
+
+        Parameters
+        ----------
+        surfaceName : str
+            Name of surface to project to.
+        X : numpy array of shape (..., 3)
+            Point to project from
+        direction : numpy array of shape (..., 3) or (3,)
+            Direction to project along, can either be a single vector or an array of the same shape as X
+
+        Returns
+        -------
+        numpy array of shape (..., 3)
+            Projected points in positive direction
+        numpy array of shape (..., 3)
+            Projected points in negative direction
         """
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        v1 = p1 - p0
+        v2 = p2 - p0
 
+        # To make this function work for X arrays of arbitrary dimension, flatten all but the last dimension
+        Xflat = X.reshape((-1, 3))
+
+        direction = np.array(direction)
+        if direction.shape == X.shape:
+            directionFlat = direction.reshape((-1, 3))
+        elif direction.shape == (3,):
+            directionFlat = np.tile(direction, (Xflat.shape[0], 1))
+        else:
+            raise ValueError("Direction must be either a single vector or an array of the same shape as X")
+
+        numPoints = Xflat.shape[0]
+
+        up = np.zeros_like(Xflat)
+        down = np.zeros_like(Xflat)
+
+        for ii in range(numPoints):
+            x1, x2, fail = geo_utils.projectNode(Xflat[ii], directionFlat[ii], p0, v1, v2)
+            if fail == 0:
+                up[ii] = x1
+                down[ii] = x2
+            elif fail == -1:
+                # More than 2 solutions. Returned in sorted distance.
+                up[ii] = x2
+                down[ii] = x1
+            else:
+                raise Error(
+                    "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
+                    % (X[ii, 0], X[ii, 1], X[ii, 2], direction[0], direction[1], direction[2])
+                )
+
+        return up.reshape(X.shape), down.reshape(X.shape)
+
+    def _generateGrid(self, leList, teList, nSpan, nChord):
         # Create mesh of intersections
         le_s = Curve(X=leList, k=2)
         te_s = Curve(X=teList, k=2)
@@ -3534,46 +3517,36 @@ class DVConstraints:
         # Generate chordwise parametric distances
         chord_s = np.linspace(0.0, 1.0, nChord)
 
-        # Get the total number of spanwise sections
-        nSpanTotal = np.sum(nSpan)
-
         # Generate a 2D region of intersections
         X = geo_utils.tfi_2d(le_s(le_span_s), te_s(te_span_s), root_s(chord_s), tip_s(chord_s))
+
+        return X
+
+    def _generateGridIntersections(self, leList, teList, nSpan, nChord, surfaceName):
+        """
+        Internal function to generate the grid points (nSpan x nChord)
+        and to actual perform the intersections. This is in a separate
+        functions since addThicknessConstraints2D, and volume based
+        constraints use the same code. The list of projected
+        coordinates are returned.
+        """
+        X = self._generateGrid(leList, teList, nSpan, nChord)
+        nSpanTotal = X.shape[0]
+
+        # Generate the 'up_vec' from taking the cross product
+        # across a quad
+        uVecs = np.zeros((nSpanTotal, nChord, 3))
+        vVecs = np.zeros((nSpanTotal, nChord, 3))
+        uVecs[0, :, :] = X[1, :, :] - X[0, :, :]
+        uVecs[-1, :, :] = X[-1, :, :] - X[-2, :, :]
+        uVecs[1:-1, :, :] = X[2:, :, :] - X[0:-2, :, :]
+        vVecs[:, 0, :] = X[:, 1, :] - X[:, 0, :]
+        vVecs[:, -1, :] = X[:, -1, :] - X[:, -2, :]
+        vVecs[:, 1:-1, :] = X[:, 2:, :] - X[:, 0:-2, :]
+        upVecs = np.cross(uVecs, vVecs)
+
         coords = np.zeros((nSpanTotal, nChord, 2, 3))
-        for i in range(nSpanTotal):
-            for j in range(nChord):
-                # Generate the 'up_vec' from taking the cross product
-                # across a quad
-                if i == 0:
-                    uVec = X[i + 1, j] - X[i, j]
-                elif i == nSpanTotal - 1:
-                    uVec = X[i, j] - X[i - 1, j]
-                else:
-                    uVec = X[i + 1, j] - X[i - 1, j]
-
-                if j == 0:
-                    vVec = X[i, j + 1] - X[i, j]
-                elif j == nChord - 1:
-                    vVec = X[i, j] - X[i, j - 1]
-                else:
-                    vVec = X[i, j + 1] - X[i, j - 1]
-
-                upVec = np.cross(uVec, vVec)
-                # Project actual node:
-                up, down, fail = geo_utils.projectNode(X[i, j], upVec, p0, p1 - p0, p2 - p0)
-
-                if fail == 0:
-                    coords[i, j, 0] = up
-                    coords[i, j, 1] = down
-                elif fail == -1:
-                    # More than 2 solutions. Returned in sorted distance.
-                    coords[i, j, 0] = down
-                    coords[i, j, 1] = up
-                else:
-                    raise Error(
-                        "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
-                        % (X[i, j, 0], X[i, j, 1], X[i, j, 2], upVec[0], upVec[1], upVec[2])
-                    )
+        coords[:, :, 0], coords[:, :, 1] = self._projectToSurface(surfaceName, X, upVecs)
 
         return coords
 
