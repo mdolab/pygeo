@@ -210,7 +210,7 @@ class ProjectedThicknessConstraint(GeometricConstraint):
 
 
 class ThicknessToChordConstraint(GeometricConstraint):
-    """These are almost identical to ThicknessConstraint but track and additional set of points along the leading and
+    """These are almost identical to ThicknessConstraint but track an additional set of points along the leading and
     trailing edges used to compute a chord length for scaling the thickness.
     """
 
