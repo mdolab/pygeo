@@ -762,6 +762,38 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
+    def nom_addThicknessToChordConstraints1D(self, name, ptList, leList, teList, nCon, **kwargs):
+        """
+        Add a DVCon thickness to chord constraint to the problem
+        Wrapper for :meth:`addThicknessToChordConstraints1D <.DVConstraints.addThicknessToChordConstraints1D>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
+        """
+        con = self.DVCon.addThicknessToChordConstraints1D(
+            ptList,
+            leList,
+            teList,
+            nCon,
+            name=name,
+            **kwargs,
+        )
+        self.add_output(name, distributed=False, val=np.ones(con.nCon), shape=con.nCon)
+
+    def nom_addThicknessToChordConstraints2D(self, name, leList, teList, nSpan, nChord, **kwargs):
+        """
+        Add a DVCon thickness to chord constraint to the problem
+        Wrapper for :meth:`addThicknessToChordConstraints2D <.DVConstraints.addThicknessToChordConstraints2D>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
+        """
+        con = self.DVCon.addThicknessToChordConstraints2D(
+            leList,
+            teList,
+            nSpan,
+            nChord,
+            name=name,
+            **kwargs,
+        )
+        self.add_output(name, distributed=False, val=np.ones(con.nCon), shape=con.nCon)
+
     def nom_addVolumeConstraint(
         self,
         name,
