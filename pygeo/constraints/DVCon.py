@@ -1,5 +1,6 @@
 # Standard Python modules
 from collections import OrderedDict
+import os
 
 # External modules
 from baseclasses.utils import Error
@@ -349,20 +350,21 @@ class DVConstraints:
             File name for tecplot file. Should have a .dat extension or a
             .dat extension will be added automatically.
         """
+        # make sure the file name has a .dat extension
+        baseName = os.path.splitext(fileName)[0]
+        fileName = baseName + ".dat"
+        with open(fileName, "w") as f:
+            f.write('TITLE = "DVConstraints Data"\n')
+            f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ"\n')
 
-        f = open(fileName, "w")
-        f.write('TITLE = "DVConstraints Data"\n')
-        f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ"\n')
+            # loop over the constraints and add their data to the tecplot file
+            for conTypeKey in self.constraints:
+                constraint = self.constraints[conTypeKey]
+                for key in constraint:
+                    constraint[key].writeTecplot(f)
 
-        # loop over the constraints and add their data to the tecplot file
-        for conTypeKey in self.constraints:
-            constraint = self.constraints[conTypeKey]
-            for key in constraint:
-                constraint[key].writeTecplot(f)
-
-        for key in self.linearCon:
-            self.linearCon[key].writeTecplot(f)
-        f.close()
+            for key in self.linearCon:
+                self.linearCon[key].writeTecplot(f)
 
     def writeSurfaceTecplot(self, fileName, surfaceName="default", fromDVGeo=None):
         """
