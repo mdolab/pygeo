@@ -1,6 +1,7 @@
 # Standard Python modules
 import os
 import unittest
+import tempfile
 
 # External modules
 from baseclasses import BaseRegTest
@@ -107,6 +108,12 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
                         pass
                     else:
                         raise
+
+    # Test that writeTecplot produces a file without error
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fileName = os.path.join(tmpdir, "DVCon")
+        DVCon.writeTecplot(fileName)
+
     return funcs, funcsSens
 
 
