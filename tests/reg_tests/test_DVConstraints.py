@@ -112,10 +112,7 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
     # Test that writeTecplot produces a file without error if it is implemented
     with tempfile.TemporaryDirectory() as tmpdir:
         fileName = os.path.join(tmpdir, "DVCon")
-        try:
-            DVCon.writeTecplot(fileName)
-        except NotImplementedError:
-            pass
+        DVCon.writeTecplot(fileName)
 
     return funcs, funcsSens
 

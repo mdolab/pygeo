@@ -1,6 +1,7 @@
 # Standard Python modules
 from collections import OrderedDict
 import os
+import warnings
 
 # External modules
 from baseclasses.utils import Error
@@ -362,10 +363,22 @@ class DVConstraints:
             for conTypeKey in self.constraints:
                 constraint = self.constraints[conTypeKey]
                 for key in constraint:
-                    constraint[key].writeTecplot(f)
+                    try:
+                        constraint[key].writeTecplot(f)
+                    except NotImplementedError:
+                        warnings.warn(
+                            f"writeTecplot not implemented for {constraint[key].__class__.__name__}, skipping",
+                            stacklevel=2,
+                        )
 
             for key in self.linearCon:
-                self.linearCon[key].writeTecplot(f)
+                if hasattr(self.linearCon, "writeTecplot"):
+                    self.linearCon[key].writeTecplot(f)
+                else:
+                    warnings.warn(
+                        f"writeTecplot not implemented for {self.linearCon[key].__class__.__name__}, skipping",
+                        stacklevel=2,
+                    )
 
     def writeSurfaceTecplot(self, fileName, surfaceName="default", fromDVGeo=None):
         """
