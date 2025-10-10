@@ -210,7 +210,7 @@ class ProjectedThicknessConstraint(GeometricConstraint):
 
 
 class ThicknessToChordConstraint(GeometricConstraint):
-    """These are almost identical to ThicknessConstraint but track and additional set of points along the leading and
+    """These are almost identical to ThicknessConstraint but track an additional set of points along the leading and
     trailing edges used to compute a chord length for scaling the thickness.
     """
 
@@ -264,7 +264,6 @@ class ThicknessToChordConstraint(GeometricConstraint):
         self.ksRho = ksRho
         self.scaled = scaled
 
-        # TODO: Alter this to deal with 1d or 2d sets of points
         self.numSpanPoints = thicknessCoords.shape[0]
         # The input coordinates may not have a chordwise dimension, so handle that here
         if len(thicknessCoords.shape) == 3:
