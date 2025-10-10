@@ -6,6 +6,7 @@ import os
 from baseclasses.utils import Error
 import numpy as np
 from pyspline import Curve
+from scipy.optimize import root
 
 # Local modules
 from .. import geo_utils, pyGeo
@@ -1396,11 +1397,12 @@ class DVConstraints:
     def addThicknessToChordConstraints1D(
         self,
         ptList,
+        leList,
+        teList,
         nCon,
-        axis,
-        chordDir,
         lower=1.0,
         upper=3.0,
+        scaled=True,
         scale=1.0,
         name=None,
         addToPyOpt=True,
@@ -1409,48 +1411,25 @@ class DVConstraints:
         compNames=None,
     ):
         r"""
-        Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
-
-        See below for a schematic
-
-        .. code-block:: text
-
-          Planform view of the wing: The '+' are the (three dimensional)
-          points that are supplied in ptList:
-
-          Physical extent of wing
-                                   \
-          __________________________\_________
-          |                  +               |
-          |                -/                |
-          |                /                 |
-          | +-------+-----+                  |
-          |              4-points defining   |
-          |              poly-line           |
-          |                                  |
-          |__________________________________/
+        Identical to addThicknessConstraints1D except that the values computed are thickness-to-chord ratios. The chord
+        lengths are computed based on the leading and trailing edge points provided by the user.
 
 
         Parameters
         ----------
         ptList : list or array of size (N x 3) where N >=2
-            The list of points forming a poly-line along which the
-            thickness constraints will be added.
+            The list of points forming a poly-line along which the thickness constraints will be added.
 
         nCon : int
-            The number of thickness to chord ratio constraints to add
+            The number of thickness to chord ratio constraints to add along the poly-line.
 
-        axis : list or array of length 3
-            The direction along which the projections will occur.
-            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+        leList : _type_
+            List of points defining the leading edge
 
-        chordDir : list or array or length 3
-            The direction defining "chord". This will typically be the
-            xasis ([1,0,0]). The magnitude of the vector doesn't
-            matter.
+        teList : _type_
+            List of points defining the trailing edge
 
         lower : float or array of size nCon
-
             The lower bound for the constraint. A single float will
             apply the same bounds to all constraints, while the array
             option will use different bounds for each constraint. This
@@ -1499,26 +1478,56 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        constr_line = Curve(X=ptList, k=2)
+        # Create curves for leading and trailing edge, and the constraint line
+        LECurve = Curve(X=leList, k=2)
+        TECurve = Curve(X=teList, k=2)
+        ConstraintCurve = Curve(X=ptList, k=2)
+
+        # Infer the spanwise direction from the LE curve
+        spanInd = np.argmax(np.array(leList[-1]) - np.array(leList[0]))
+        # Generate constraint locations
         s = np.linspace(0, 1, nCon)
-        X = constr_line(s)
-        coords = np.zeros((nCon, 4, 3))
-        chordDir /= np.linalg.norm(np.array(chordDir, "d"))
+        X = ConstraintCurve(s)
 
-        # Project all the points
-        up, down = self._projectToSurface(surfaceName, X, axis)
-        coords[:, 0] = up
-        coords[:, 1] = down
+        # Since the LE/TE curves may have different extents, we can't just sample the LE and TE curves at the same s
+        # coordinates to get points aligned with the constrain locations. Instead we will search for the points on the
+        # LE and TE that have the same spanwise coordinates
+        XLE = np.zeros_like(X)
+        XTE = np.zeros_like(X)
 
-        height = np.linalg.norm(coords[:, 0] - coords[:, 1], axis=1)
-        # Third point is the mid-point of those
-        coords[:, 2] = 0.5 * (coords[:, 0] + coords[:, 1])
+        def locationError(s, targetSpanLocs, curve, spanInd):
+            pts = curve(s)
+            return pts[:, spanInd] - targetSpanLocs
 
-        # Fourth point is along the chordDir
-        coords[:, 3] = coords[:, 2] + 0.1 * height[:, np.newaxis] * chordDir
+        for curve, Xout in zip([LECurve, TECurve], [XLE, XTE]):
+            targetSpanLocs = X[:, spanInd]
+            if any(targetSpanLocs < curve(0)[spanInd]) or any(targetSpanLocs > curve(1)[spanInd]):
+                raise Error(
+                    "The provided constraint line extends beyond the leading or trailing edge curves. "
+                    "Make sure the spanwise extent of ptList is within that of leList and teList."
+                )
+            s0 = np.linspace(0, 1, nCon)
+            sSol = root(locationError, s0, args=(targetSpanLocs, curve, spanInd))
+            Xout[:] = curve(sSol.x)
 
-        # Create the thickness constraint object:
-        coords = coords.reshape((nCon * 4, 3))
+        thicknessCoords = np.zeros((nCon, 2, 3))
+
+        # Compute the projection direction by taking the cross product of the spanwise and chordwise directions
+        spanDir = np.roll(X, -1, axis=0) - np.roll(X, 1, axis=0)
+        spanDir[0] = X[1] - X[0]
+        spanDir[-1] = X[-1] - X[-2]
+        chordDir = XLE - XTE
+        projectionDirs = np.cross(chordDir, spanDir)
+        projectionDirs /= np.linalg.norm(projectionDirs, axis=1)[:, np.newaxis]
+
+        # Project points along the constraint line to the upper and lower surfaces
+        up, down = self._projectToSurface(surfaceName, X, projectionDirs)
+        thicknessCoords[:, 0] = up
+        thicknessCoords[:, 1] = down
+
+        LeTeCoords = np.zeros((nCon, 2, 3))
+        LeTeCoords[:, 0] = XLE
+        LeTeCoords[:, 1] = XTE
 
         typeName = "thickCon"
         if typeName not in self.constraints:
@@ -1528,7 +1537,109 @@ class DVConstraints:
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessToChordConstraint(
-            conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
+            name=conName,
+            thicknessCoords=thicknessCoords,
+            LeTeCoords=LeTeCoords,
+            lower=lower,
+            upper=upper,
+            scaled=scaled,
+            scale=scale,
+            DVGeo=self.DVGeometries[DVGeoName],
+            addToPyOpt=addToPyOpt,
+            compNames=compNames,
+        )
+
+    def addThicknessToChordConstraints2D(
+        self,
+        leList,
+        teList,
+        nSpan,
+        nChord,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+        compNames=None,
+        sectionMax=False,
+        ksRho=50.0,
+    ):
+        """Similar to addThicknessConstraints2D except that the values computed are thickness-to-chord ratios.
+
+        The chord lengths are computed based on the leading and trailing edge points provided by the user.
+
+        Parameters
+        ----------
+        leList : _type_
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        teList : _type_
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        nSpan : _type_
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        nChord : _type_
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        lower : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        upper : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        scaled : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        scale : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        name : _type_, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        addToPyOpt : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        surfaceName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        DVGeoName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        compNames : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        projected : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        sectionMax : bool, optional
+            If True, computes the maximum thickness-to-chord ratio in each section using KS aggregation.
+        ksRho : float, optional
+            The rho value to use for KS aggregation if ``sectionMax=True``
+        """
+
+        self._checkDVGeo(DVGeoName)
+
+        if nChord < 2:
+            raise Error("nChord must be at least 2")
+
+        thicknessCoords = self._generateGridIntersections(leList, teList, nSpan, nChord, surfaceName)
+
+        # Create leading and trailing edge points at the midpoint of the forward and rearmost thickness points
+        LeTeCoords = np.zeros((nSpan, 2, 3))
+        for ii in [0, -1]:
+            LeTeCoords[:, ii, :] = 0.5 * (thicknessCoords[:, ii, 0, :] + thicknessCoords[:, ii, 1, :])
+
+        typeName = "thickCon"
+        if typeName not in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+        if name is None:
+            conName = f"{self.name}_thickness_to_chord_constraints_{len(self.constraints[typeName])}"
+        else:
+            conName = name
+
+        self.constraints[typeName][conName] = ThicknessToChordConstraint(
+            conName,
+            thicknessCoords,
+            LeTeCoords,
+            lower,
+            upper,
+            scaled,
+            scale,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+            compNames,
+            sectionMax,
+            ksRho,
         )
 
     def addTriangulatedSurfaceConstraint(
