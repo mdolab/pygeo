@@ -610,25 +610,58 @@ class RegTestPyGeo(unittest.TestCase):
 
     def test_thicknessToChord(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_thicknessToChord.ref")
+        nSpan = 5
+        nChord = 6
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
 
+            leList = [[1e-6, 0.0, 1e-6], [0.0, 0.0, 2.5], [0.15, 0.0, 5.25]]
+            teList = [[1.67, 0.0, 1e-6], [1.67, 0.0, 2.5], [1.325, 0.0, 5.25]]
             ptList = [[0.8, 0.0, 0.1], [0.8, 0.0, 5.0]]
-            DVCon.addThicknessToChordConstraints1D(ptList, nCon=10, axis=[0, 1, 0], chordDir=[1, 0, 0])
 
+            # Create all the different types of thickness to chord constraints
+            DVCon.addThicknessToChordConstraints1D(
+                name="ToC-1D-Scaled", ptList=ptList, leList=leList, teList=teList, nCon=nSpan
+            )
+            DVCon.addThicknessToChordConstraints1D(
+                name="ToC-1D-Unscaled", ptList=ptList, leList=leList, teList=teList, nCon=nSpan, scaled=False
+            )
+            DVCon.addThicknessToChordConstraints2D(
+                name="ToC-2D-Scaled", leList=leList, teList=teList, nSpan=nSpan, nChord=nChord
+            )
+            DVCon.addThicknessToChordConstraints2D(
+                name="ToC-2D-Unscaled", leList=leList, teList=teList, nSpan=nSpan, nChord=nChord, scaled=False
+            )
+            DVCon.addThicknessToChordConstraints2D(
+                name="ToCMax-2D",
+                leList=leList,
+                teList=teList,
+                nSpan=nSpan,
+                nChord=nChord,
+                scaled=False,
+                sectionMax=True,
+            )
+
+            # Test derivatives against finite differences
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
-            handler.assert_allclose(
-                funcs["DVCon1_thickness_to_chord_constraints_0"], np.ones(10), name="toverc_base", rtol=1e-7, atol=1e-7
-            )
 
-            funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
-            handler.assert_allclose(
-                funcs["DVCon1_thickness_to_chord_constraints_0"],
-                np.ones(10),
-                name="toverc_twisted",
-                rtol=1e-3,
-                atol=1e-3,
-            )
+            # All scaled thickness to chord constraints should be one at the start
+            for funcName in funcs:
+                if "-scaled" in funcName.lower():
+                    handler.assert_allclose(
+                        funcs[funcName], np.ones_like(funcs[funcName]), name="toverc_base", rtol=1e-12, atol=1e-12
+                    )
+
+            # Check that all the thickness to chord constraints are unchanged by twist
+            twistFuncs, twistFuncsSens = self.wing_test_twist(DVGeo, DVCon, handler)
+            for func in twistFuncs:
+                handler.assert_allclose(
+                    twistFuncs[func],
+                    funcs[func],
+                    name="toverc_twisted",
+                    rtol=1e-3,
+                    atol=1e-6,
+                )
 
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
