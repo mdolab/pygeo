@@ -1577,7 +1577,7 @@ class DVConstraints:
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         scale : float, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
-        name : , optional
+        name : str, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         addToPyOpt : bool, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
