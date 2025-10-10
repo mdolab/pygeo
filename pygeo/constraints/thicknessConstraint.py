@@ -324,9 +324,9 @@ class ThicknessToChordConstraint(GeometricConstraint):
 
     def evalFunctions(self, funcs, config):
         thickness, chord = self.computeThicknessAndChord(config)
-        if self.sectionMax:
-            thickness = self.ksMax(thickness, self.ksRho, axis=1)
         tOverC = thickness / chord
+        if self.sectionMax:
+            tOverC = self.ksMax(tOverC, self.ksRho, axis=1)
 
         if self.scaled and self.tOverCInit is not None:
             tOverC /= self.tOverCInit
@@ -373,9 +373,11 @@ class ThicknessToChordConstraint(GeometricConstraint):
             tOverCSens[dvName] = (dtdx * chord[:, :, np.newaxis] - thickness[:, :, np.newaxis] * dcdx) / (chord**2)[
                 :, :, np.newaxis
             ]
+
             if self.sectionMax:
                 dksdtc = self.ksMaxSens(thickness / chord, self.ksRho, axis=1)  # shape (nSpan, nChord)
                 tOverCSens[dvName] = np.einsum("sc,scd->sd", dksdtc, tOverCSens[dvName])
+
             tOverCSens[dvName] = tOverCSens[dvName].reshape(-1, numDVs)
             if self.scaled:
                 tOverCSens[dvName] /= self.tOverCInit.flatten()[:, np.newaxis]
