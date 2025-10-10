@@ -319,7 +319,7 @@ class ThicknessToChordConstraint(GeometricConstraint):
         if scaled:
             funcs = {}
             self.evalFunctions(funcs, config=None)
-            self.tOverCInit = funcs[self.name].reshape((self.numSpanPoints, self.numChordPoints))
+            self.tOverCInit = funcs[self.name].reshape((self.numSpanPoints, -1))
 
     def evalFunctions(self, funcs, config):
         thickness, chord = self.computeThicknessAndChord(config)

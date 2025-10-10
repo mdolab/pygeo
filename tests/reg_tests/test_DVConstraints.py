@@ -615,7 +615,7 @@ class RegTestPyGeo(unittest.TestCase):
                 )
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
-    def test_thicknessToChord(self, train=False, refDeriv=False):
+    def test_thicknessToChord(self, train=True, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_thicknessToChord.ref")
         nSpan = 5
         nChord = 6
@@ -640,7 +640,16 @@ class RegTestPyGeo(unittest.TestCase):
                 name="ToC-2D-Unscaled", leList=leList, teList=teList, nSpan=nSpan, nChord=nChord, scaled=False
             )
             DVCon.addThicknessToChordConstraints2D(
-                name="ToCMax-2D",
+                name="ToCMax-2D-Scaled",
+                leList=leList,
+                teList=teList,
+                nSpan=nSpan,
+                nChord=nChord,
+                scaled=True,
+                sectionMax=True,
+            )
+            DVCon.addThicknessToChordConstraints2D(
+                name="ToCMax-2D-Unscaled",
                 leList=leList,
                 teList=teList,
                 nSpan=nSpan,
