@@ -264,7 +264,6 @@ class ThicknessToChordConstraint(GeometricConstraint):
         self.ksRho = ksRho
         self.scaled = scaled
 
-        # TODO: Alter this to deal with 1d or 2d sets of points
         self.numSpanPoints = thicknessCoords.shape[0]
         # The input coordinates may not have a chordwise dimension, so handle that here
         if len(thicknessCoords.shape) == 3:
