@@ -372,7 +372,7 @@ class DVConstraints:
                         )
 
             for key in self.linearCon:
-                if hasattr(self.linearCon, "writeTecplot"):
+                if hasattr(self.linearCon[key], "writeTecplot"):
                     self.linearCon[key].writeTecplot(f)
                 else:
                     warnings.warn(
