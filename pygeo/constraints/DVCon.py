@@ -3463,7 +3463,14 @@ class DVConstraints:
             else:
                 raise Error(
                     "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
-                    % (X[ii, 0], X[ii, 1], X[ii, 2], direction[0], direction[1], direction[2])
+                    % (
+                        Xflat[ii, 0],
+                        Xflat[ii, 1],
+                        Xflat[ii, 2],
+                        directionFlat[ii, 0],
+                        directionFlat[ii, 1],
+                        directionFlat[ii, 2],
+                    )
                 )
 
         return up.reshape(X.shape), down.reshape(X.shape)
