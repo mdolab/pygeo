@@ -582,7 +582,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -743,7 +743,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -893,7 +893,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1097,7 +1097,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1237,7 +1237,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1363,7 +1363,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1459,7 +1459,7 @@ class DVConstraints:
         DVGeoName : str, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        compNames : str, optional
+        compNames : list, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
         """
@@ -1585,7 +1585,7 @@ class DVConstraints:
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         DVGeoName : str, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
-        compNames : str, optional
+        compNames : list, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         sectionMax : bool, optional
             If True, the output values are the maximum thickness-to-chord ratio in each section, computed using KS
@@ -1978,7 +1978,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2521,7 +2521,7 @@ class DVConstraints:
             the values need to be processed (modified) *before* they are
             given to the optimizer, set this flag to False.
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2644,7 +2644,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2736,7 +2736,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2843,7 +2843,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2957,7 +2957,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -3060,7 +3060,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -3178,7 +3178,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -3362,7 +3362,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
