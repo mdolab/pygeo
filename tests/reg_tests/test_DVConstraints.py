@@ -1,7 +1,7 @@
 # Standard Python modules
 import os
-import unittest
 import tempfile
+import unittest
 
 # External modules
 from baseclasses import BaseRegTest
