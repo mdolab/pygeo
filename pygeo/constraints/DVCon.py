@@ -1602,7 +1602,8 @@ class DVConstraints:
         projected : bool, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         sectionMax : bool, optional
-            If True, computes the maximum thickness-to-chord ratio in each section using KS aggregation.
+            If True, the output values are the maximum thickness-to-chord ratio in each section, computed using KS
+            aggregation.
         ksRho : float, optional
             The rho value to use for KS aggregation if ``sectionMax=True``
         """
