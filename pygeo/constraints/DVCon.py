@@ -633,6 +633,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addThicknessConstraints1D(
         self,
@@ -781,6 +782,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addProximityConstraints(
         self,
@@ -970,6 +972,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addLERadiusConstraints(
         self,
@@ -1152,6 +1155,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = RadiusConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addLocationConstraints1D(
         self,
@@ -1263,6 +1267,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = LocationConstraint(
             conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addProjectedLocationConstraints1D(
         self,
@@ -1393,6 +1398,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = LocationConstraint(
             conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addThicknessToChordConstraints1D(
         self,
@@ -1529,6 +1535,7 @@ class DVConstraints:
             addToPyOpt=addToPyOpt,
             compNames=compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addThicknessToChordConstraints2D(
         self,
@@ -1621,6 +1628,7 @@ class DVConstraints:
             sectionMax,
             ksRho,
         )
+        return self.constraints[typeName][conName]
 
     def addTriangulatedSurfaceConstraint(
         self,
@@ -1746,6 +1754,7 @@ class DVConstraints:
             max_perim,
             heuristic_dist,
         )
+        return self.constraints[typeName][conName]
 
     def addTriangulatedVolumeConstraint(
         self,
@@ -1842,6 +1851,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = TriangulatedVolumeConstraint(
             conName, surface, surfaceName, lower, upper, scaled, scale, DVGeo, addToPyOpt
         )
+        return self.constraints[typeName][conName]
 
     def addVolumeConstraint(
         self,
@@ -2006,6 +2016,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addCompositeVolumeConstraint(
         self, vols, lower=1.0, upper=3.0, scaled=True, scale=1.0, name=None, addToPyOpt=True, DVGeoName="default"
@@ -2097,6 +2108,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = CompositeVolumeConstraint(
             conName, volCons, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
         )
+        return self.constraints[typeName][conName]
 
     def addLeTeConstraints(
         self,
@@ -2294,6 +2306,7 @@ class DVConstraints:
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, np.ones(n), np.ones(n), lower=0, upper=0, DVGeo=DVGeo, config=config
         )
+        return self.linearCon[conName]
 
     def addLinearConstraintsShape(
         self,
@@ -2427,6 +2440,7 @@ class DVConstraints:
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper, DVGeo, config=config
         )
+        return self.linearCon[conName]
 
     def addGearPostConstraint(
         self,
@@ -2543,6 +2557,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addCircularityConstraint(
         self,
@@ -2655,6 +2670,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = CircularityConstraint(
             conName, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addSurfaceAreaConstraint(
         self,
@@ -2752,6 +2768,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addProjectedAreaConstraint(
         self,
@@ -2877,6 +2894,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addPlanarityConstraint(
         self,
@@ -2976,6 +2994,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addColinearityConstraint(
         self,
@@ -3071,6 +3090,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = ColinearityConstraint(
             conName, lineAxis, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addCurvatureConstraint(
         self,
@@ -3210,6 +3230,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addCurvatureConstraint1D(
         self,
@@ -3399,6 +3420,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addMonotonicConstraints(
         self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childName=None, comp=None, DVGeoName="default"
@@ -3465,6 +3487,7 @@ class DVConstraints:
             DVGeo=DVGeo,
             config=config,
         )
+        return self.linearCon[conName]
 
     def _checkDVGeo(self, name="default"):
         """Check if DVGeo exists"""
