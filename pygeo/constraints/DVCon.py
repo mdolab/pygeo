@@ -1417,63 +1417,44 @@ class DVConstraints:
 
         Parameters
         ----------
-        ptList : list or array of size (N x 3) where N >=2
-            The list of points forming a poly-line along which the thickness constraints will be added.
+        ptList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints1D>`
 
-        nCon : int
-            The number of thickness to chord ratio constraints to add along the poly-line.
+        nCon :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints1D>`
 
-        leList : _type_
-            List of points defining the leading edge
+        leList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        teList : _type_
-            List of points defining the trailing edge
+        teList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        lower : float or array of size nCon
-            The lower bound for the constraint. A single float will
-            apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. This
-            constraint can only be used in "scaled" mode. That means,
-            the actual t/c is *never* computed. This constraint can
-            only be used to constrain the relative change in t/c. A
-            lower bound of 1.0, therefore mean the t/c cannot
-            decrease. This is the typical use of this constraint.
+        lower : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        upper : float or array of size nCon
-            The upper bound for the constraint. A single float will
-            apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint.
+        upper : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        scale : float or array of size nCon
-            This is the optimization scaling of the
-            constraint. Typically this parameter will not need to be
-            changed. If the thickness constraints are scaled, this
-            already results in well-scaled constraint values, and
-            scale can be left at 1.0. If scaled=False, it may changed
-            to a more suitable value of the resulting physical
-            thickness have magnitudes vastly different than O(1).
+        scaled : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        name : str
-            Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constraint names
-            need to be distinguished **or** you are using this set of
-            thickness constraints for something other than a direct
-            constraint in pyOptSparse.
+        scale : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        addToPyOpt : bool
-            Normally this should be left at the default of True. If
-            the values need to be processed (modified) *before* they are
-            given to the optimizer, set this flag to False.
+        name : , optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        DVGeoName : str
-            Name of the DVGeo object to compute the constraint with. You only
-            need to set this if you're using multiple DVGeo objects
-            for a problem. For backward compatibility, the name is 'default' by default
+        addToPyOpt : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        compNames : list
-            If using DVGeometryMulti, the components to which the point set associated
-            with this constraint should be added.
-            If None, the point set is added to all components.
+        surfaceName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+
+        DVGeoName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+
+        compNames : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
         """
         self._checkDVGeo(DVGeoName)
@@ -1573,13 +1554,13 @@ class DVConstraints:
 
         Parameters
         ----------
-        leList : _type_
+        leList :
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
-        teList : _type_
+        teList :
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
-        nSpan : _type_
+        nSpan :
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
-        nChord : _type_
+        nChord :
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         lower : float, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
@@ -1589,7 +1570,7 @@ class DVConstraints:
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         scale : float, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
-        name : _type_, optional
+        name : , optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         addToPyOpt : bool, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
@@ -1598,8 +1579,6 @@ class DVConstraints:
         DVGeoName : str, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         compNames : str, optional
-            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
-        projected : bool, optional
             See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
         sectionMax : bool, optional
             If True, the output values are the maximum thickness-to-chord ratio in each section, computed using KS
