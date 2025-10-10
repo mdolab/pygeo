@@ -210,91 +210,216 @@ class ProjectedThicknessConstraint(GeometricConstraint):
 
 
 class ThicknessToChordConstraint(GeometricConstraint):
-    """
-    ThicknessToChordConstraint represents of a set of
-    thickess-to-chord ratio constraints. One of these objects is
-    created each time a addThicknessToChordConstraints2D or
-    addThicknessToChordConstraints1D call is made. The user should not
-    have to deal with this class directly.
+    """These are almost identical to ThicknessConstraint but track and additional set of points along the leading and
+    trailing edges used to compute a chord length for scaling the thickness.
     """
 
-    def __init__(self, name, coords, lower, upper, scale, DVGeo, addToPyOpt, compNames):
-        super().__init__(name, len(coords) // 4, lower, upper, scale, DVGeo, addToPyOpt)
-        self.coords = coords
+    def __init__(
+        self,
+        name,
+        thicknessCoords,
+        LeTeCoords,
+        lower,
+        upper,
+        scaled,
+        scale,
+        DVGeo,
+        addToPyOpt,
+        compNames,
+        sectionMax=False,
+        ksRho=50.0,
+    ):
+        """Instantiate a ThicknessToChordConstraint object, this should not be called directly by the user but instead
+        by addThicknessToChordConstraints1D or addThicknessToChordConstraints2D.
 
-        # First thing we can do is embed the coordinates into DVGeo
-        # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
+        Parameters
+        ----------
+        name : str
+            See :meth:`GeometricConstraint.__init__ <.baseConstraint.GeometricConstraint.__init__>`.
+        thicknessCoords : numpy array of shape (..., nSpan, 2, 3)
+            Coordinates of the points used to measure thickness.
+        LeTeCoords : numpy array of shape (nSpan, 2, 3)
+            Coordinates of the leading and trailing edge points used to measure chord length.
+        lower : float, array, or None
+            See :meth:`GeometricConstraint.__init__ <.baseConstraint.GeometricConstraint.__init__>`.
+        upper : float, array, or None
+            See :meth:`GeometricConstraint.__init__ <.baseConstraint.GeometricConstraint.__init__>`.
+        scaled : bool
+            If true, the constraint values are normalized by their initial values.
+        scale : _type_
+            See :meth:`GeometricConstraint.__init__ <.baseConstraint.GeometricConstraint.__init__>`.
+        DVGeo : _type_
+            See :meth:`GeometricConstraint.__init__ <.baseConstraint.GeometricConstraint.__init__>`.
+        addToPyOpt : _type_
+            See :meth:`GeometricConstraint.__init__ <.baseConstraint.GeometricConstraint.__init__>`.
+        compNames : list or None
+            If using DVGeometryMulti, the components to which the point set associated with this constraint should be
+            added. If None, the point set is added to all components.
+        sectionMax : bool
+            If True, computes the maximum thickness-to-chord ratio in each section using KS aggregation.
+        ksRho : float
+            The rho value to use for KS aggregation if ``sectionMax=True``
+        """
+        self.sectionMax = sectionMax
+        self.ksRho = ksRho
+        self.scaled = scaled
 
-        # Now get the reference lengths
-        self.ToC0 = np.zeros(self.nCon)
-        for i in range(self.nCon):
-            t = np.linalg.norm(self.coords[4 * i] - self.coords[4 * i + 1])
-            c = np.linalg.norm(self.coords[4 * i + 2] - self.coords[4 * i + 3])
-            self.ToC0[i] = t / c
+        # TODO: Alter this to deal with 1d or 2d sets of points
+        self.numSpanPoints = thicknessCoords.shape[0]
+        # The input coordinates may not have a chordwise dimension, so handle that here
+        if len(thicknessCoords.shape) == 3:
+            thicknessCoords = thicknessCoords.reshape((self.numSpanPoints, 1, 2, 3))
+        self.origCoordsShape = thicknessCoords.shape
+        self.numChordPoints = self.origCoordsShape[1]
+
+        # No point in doing section max if there's only one chordwise point
+        if self.numChordPoints == 1:
+            self.sectionMax = False
+
+        numCon = self.numSpanPoints if sectionMax else self.numSpanPoints * self.numChordPoints
+        super().__init__(name, numCon, lower, upper, scale, DVGeo, addToPyOpt)
+
+        # Verify that we have the right number of leading and trailing edge points
+        self.origLeTeShape = LeTeCoords.shape
+        if self.origLeTeShape != (self.numSpanPoints, 2, 3):
+            raise ValueError(
+                f"LeTeCoords has incorrect shape, should be ({self.numSpanPoints}, 2, 3), got {LeTeCoords.shape}"
+            )
+
+        self.thicknessConName = name + "_thickness"
+        self.chordConName = name + "_chord"
+
+        # Create a ThicknessConstraint object to handle the thickness part of this constraint
+        self.thicknessConstraint = ThicknessConstraint(
+            name=self.thicknessConName,
+            coords=thicknessCoords.reshape((-1, 3)),
+            lower=-np.inf,
+            upper=np.inf,
+            scaled=False,
+            scale=scale,
+            DVGeo=DVGeo,
+            addToPyOpt=False,
+            compNames=compNames,
+        )
+
+        # Create another thickness constraint to handle the chord length part of this constraint
+        self.chordConstraint = ThicknessConstraint(
+            name=self.chordConName,
+            coords=LeTeCoords.reshape((-1, 3)),
+            lower=-np.inf,
+            upper=np.inf,
+            scaled=False,
+            scale=scale,
+            DVGeo=DVGeo,
+            addToPyOpt=False,
+            compNames=compNames,
+        )
+
+        # Compute the initial thickness-to-chord ratios if we are scaling
+        self.tOverCInit = None
+        if scaled:
+            funcs = {}
+            self.evalFunctions(funcs, config=None)
+            self.tOverCInit = funcs[self.name].reshape((self.numSpanPoints, self.numChordPoints))
 
     def evalFunctions(self, funcs, config):
-        """
-        Evaluate the functions this object has and place in the funcs dictionary
+        thickness, chord = self.computeThicknessAndChord(config)
+        if self.sectionMax:
+            thickness = self.ksMax(thickness, self.ksRho, axis=1)
+        tOverC = thickness / chord
 
-        Parameters
-        ----------
-        funcs : dict
-            Dictionary to place function values
-        """
-        # Pull out the most recent set of coordinates:
-        self.coords = self.DVGeo.update(self.name, config=config)
-        ToC = np.zeros(self.nCon)
-        for i in range(self.nCon):
-            t = geo_utils.eDist(self.coords[4 * i], self.coords[4 * i + 1])
-            c = geo_utils.eDist(self.coords[4 * i + 2], self.coords[4 * i + 3])
-            ToC[i] = (t / c) / self.ToC0[i]
+        if self.scaled and self.tOverCInit is not None:
+            tOverC /= self.tOverCInit
 
-        funcs[self.name] = ToC
+        funcs[self.name] = tOverC.flatten()
+
+    def computeThicknessAndChord(self, config):
+        tempFuncs = {}
+        self.thicknessConstraint.evalFunctions(tempFuncs, config)
+        self.chordConstraint.evalFunctions(tempFuncs, config)
+
+        thickness = tempFuncs[self.thicknessConName].reshape((self.numSpanPoints, self.numChordPoints))
+        chord = tempFuncs[self.chordConName].reshape((self.numSpanPoints, 1))
+        return thickness, chord
+
+    def computeThicknessAndChordSens(self, config):
+        tempFuncsSens = {}
+        self.thicknessConstraint.evalFunctionsSens(tempFuncsSens, config)
+        self.chordConstraint.evalFunctionsSens(tempFuncsSens, config)
+
+        for dvName in self.getVarNames():
+            numDVs = tempFuncsSens[self.thicknessConName][dvName].shape[-1]
+            tempFuncsSens[self.thicknessConName][dvName] = tempFuncsSens[self.thicknessConName][dvName].reshape(
+                (self.numSpanPoints, self.numChordPoints, numDVs)
+            )
+            tempFuncsSens[self.chordConName][dvName] = tempFuncsSens[self.chordConName][dvName].reshape(
+                (self.numSpanPoints, 1, numDVs)
+            )
+        return tempFuncsSens[self.thicknessConName], tempFuncsSens[self.chordConName]
 
     def evalFunctionsSens(self, funcsSens, config):
-        """
-        Evaluate the sensitivity of the functions this object has and
-        place in the funcsSens dictionary
+        thickness, chord = self.computeThicknessAndChord(config)
+        thicknessSens, chordSens = self.computeThicknessAndChordSens(config)
+
+        funcsSens[self.name] = {}
+        tOverCSens = funcsSens[self.name]
+        dvNames = set(thicknessSens.keys()).union(set(chordSens.keys()))
+        for dvName in dvNames:
+            dtdx = thicknessSens[dvName]
+            dcdx = chordSens[dvName]
+            numDVs = dtdx.shape[-1]
+
+            # Quotient rule says d(t/c)dx = (dtdx*c - t*dcdx) / c^2
+            tOverCSens[dvName] = (dtdx * chord[:, :, np.newaxis] - thickness[:, :, np.newaxis] * dcdx) / (chord**2)[
+                :, :, np.newaxis
+            ]
+            if self.sectionMax:
+                dksdtc = self.ksMaxSens(thickness / chord, self.ksRho, axis=1)  # shape (nSpan, nChord)
+                tOverCSens[dvName] = np.einsum("sc,scd->sd", dksdtc, tOverCSens[dvName])
+            tOverCSens[dvName] = tOverCSens[dvName].reshape(-1, numDVs)
+            if self.scaled:
+                tOverCSens[dvName] /= self.tOverCInit.flatten()[:, np.newaxis]
+
+    def writeTecplot(self, handle):
+        self.thicknessConstraint.writeTecplot(handle)
+        self.chordConstraint.writeTecplot(handle)
+
+    @staticmethod
+    def ksMax(f, rho, axis=None):
+        """Approximate the maximum value of f along the given axis using KS aggregation.
 
         Parameters
         ----------
-        funcsSens : dict
-            Dictionary to place function values
+        f : array
+            Input data
+        rho : float
+            KS aggregation parameter, larger values more closely approximate the max but are less smooth.
+        axis : int, optional
+            The dimension to compute the max along, by default computes max across entire array.
         """
+        fMax = np.max(f, axis=axis, keepdims=True)
+        exponents = np.exp(rho * (f - fMax))
+        ks = fMax + np.log(np.sum(exponents, axis=axis, keepdims=True)) / rho
+        return ks
 
-        nDV = self.DVGeo.getNDV()
-        if nDV > 0:
-            dToCdPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
+    @staticmethod
+    def ksMaxSens(f, rho, axis=None):
+        """Compute the sensitivity of the KS max function.
 
-            for i in range(self.nCon):
-                t = geo_utils.eDist(self.coords[4 * i], self.coords[4 * i + 1])
-                c = geo_utils.eDist(self.coords[4 * i + 2], self.coords[4 * i + 3])
-
-                p1b, p2b = geo_utils.eDist_b(self.coords[4 * i, :], self.coords[4 * i + 1, :])
-                p3b, p4b = geo_utils.eDist_b(self.coords[4 * i + 2, :], self.coords[4 * i + 3, :])
-
-                dToCdPt[i, 4 * i, :] = p1b / c / self.ToC0[i]
-                dToCdPt[i, 4 * i + 1, :] = p2b / c / self.ToC0[i]
-                dToCdPt[i, 4 * i + 2, :] = (-p3b * t / c**2) / self.ToC0[i]
-                dToCdPt[i, 4 * i + 3, :] = (-p4b * t / c**2) / self.ToC0[i]
-
-            funcsSens[self.name] = self.DVGeo.totalSensitivity(dToCdPt, self.name, config=config)
-
-    def writeTecplot(self, handle):
+        Parameters
+        ----------
+        f : array
+            Input data
+        rho : float
+            KS aggregation parameter, larger values more closely approximate the max but are less smooth.
+        axis : int, optional
+            The dimension to compute the max along, by default computes max across entire array.
         """
-        Write the visualization of this set of thickness constraints
-        to the open file handle
-        """
-
-        handle.write("Zone T=%s\n" % self.name)
-        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) // 2))
-        handle.write("DATAPACKING=POINT\n")
-        for i in range(len(self.coords)):
-            handle.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f}\n")
-
-        for i in range(len(self.coords) // 2):
-            handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+        fMax = np.max(f, axis=axis, keepdims=True)
+        exponents = np.exp(rho * (f - fMax))
+        sumExp = np.sum(exponents, axis=axis, keepdims=True)
+        dksdf = exponents / sumExp
+        return dksdf
 
 
 class ProximityConstraint(GeometricConstraint):
