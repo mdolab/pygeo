@@ -615,7 +615,7 @@ class RegTestPyGeo(unittest.TestCase):
                 )
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
-    def test_thicknessToChord(self, train=True, refDeriv=False):
+    def test_thicknessToChord(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_thicknessToChord.ref")
         nSpan = 5
         nChord = 6
