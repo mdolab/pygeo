@@ -385,6 +385,24 @@ class ThicknessToChordConstraint(GeometricConstraint):
         self.thicknessConstraint.writeTecplot(handle)
         self.chordConstraint.writeTecplot(handle)
 
+        # Write a zone for the max thickness-to-chord ratio if using section max
+        if self.sectionMax:
+            thickness, _ = self.computeThicknessAndChord(config=None)
+            maxIndices = np.argmax(thickness, axis=1)
+            thicknessCoords = self.thicknessConstraint.coords.reshape(self.origCoordsShape)
+
+            handle.write(f"Zone T={self.name}_MaxToC\n")
+            handle.write(f"Nodes = {2 * self.numSpanPoints}, Elements = {self.numSpanPoints} ZONETYPE=FELINESEG\n")
+            handle.write("DATAPACKING=POINT\n")
+
+            for ii in range(self.numSpanPoints):
+                for jj in range(2):
+                    point = thicknessCoords[ii, maxIndices[ii], jj]
+                    handle.write(f"{point[0]:f} {point[1]:f} {point[2]:f}\n")
+
+            for ii in range(self.numSpanPoints):
+                handle.write(f"{2 * ii + 1} {2 * ii + 2}\n")
+
     @staticmethod
     def ksMax(f, rho, axis=None):
         """Approximate the maximum value of f along the given axis using KS aggregation.
