@@ -36,6 +36,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # since `nom_add_discipline_coords` can be called before `setup`
         self.omPtInOutDict = {}
 
+        self.update_jac = True
+
     def setup(self):
         # create a constraints object to go with this DVGeo(s)
         self.DVCon = DVConstraints()
