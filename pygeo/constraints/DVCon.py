@@ -3554,9 +3554,19 @@ class DVConstraints:
         Returns
         -------
         numpy array of shape (..., 3)
-            Projected points in positive direction
+            "up" projected points
         numpy array of shape (..., 3)
-            Projected points in negative direction
+            "down" projected points
+
+        Notes
+        -----
+        In the default case, where there is one intersection along the positive direction of projection and one in the
+        negative direction, the "up" points correspond to the intersection in the positive direction of projection and
+        the "down" points correspond to the intersection in the negative direction of projection. However, in cases
+        where both intersections are in the same direction of projection, the "up" point is defined as the intersection
+        furthest along the positive direction of projection. In cases where there are more than two intersections, the
+        two intersections closest to the original point are returned, with the "up" point defined as the intersection
+        furthest along the positive direction of projection.
         """
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         v1 = p1 - p0
@@ -3584,9 +3594,14 @@ class DVConstraints:
                 up[ii] = x1
                 down[ii] = x2
             elif fail == -1:
-                # More than 2 solutions. Returned in sorted distance.
-                up[ii] = x2
-                down[ii] = x1
+                # More than 2 solutions. In this case projectNode returns the two closest points, choose the one
+                # furthest in the direction of projection first
+                if np.dot(x1 - Xflat[ii], directionFlat[ii]) > np.dot(x2 - Xflat[ii], directionFlat[ii]):
+                    up[ii] = x1
+                    down[ii] = x2
+                else:
+                    up[ii] = x2
+                    down[ii] = x1
             else:
                 raise Error(
                     "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
