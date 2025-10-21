@@ -1,3 +1,4 @@
+# Standard Python modules
 import inspect
 
 # External modules
