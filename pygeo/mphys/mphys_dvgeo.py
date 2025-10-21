@@ -1,3 +1,5 @@
+import inspect
+
 # External modules
 from mpi4py import MPI
 import numpy as np
@@ -99,7 +101,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             for _, DVGeo in self.DVGeos.items():
                 self.DVCon.setDVGeo(DVGeo, name=DVConName)
 
-        self.omPtSetList = []
+        self.omPtSetList = {}
 
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
@@ -223,7 +225,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, outputName, add_output=False, DVGeoName=DVGeoName, **kwargs)
+            self.nom_addPointSet(points, outputName, add_output=False, DVGeoName=DVGeoName, distributed=True, **kwargs)
             self.add_input(inputName, distributed=True, val=points.flatten())
             self.add_output(outputName, distributed=True, val=points.flatten())
 
@@ -253,8 +255,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # add the points to the dvgeo object
         # DVGeoESP and DVGeoVSP can return a value to check the pointset distribution
-        dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, **kwargs)
-        self.omPtSetList.append(ptName)
+        # Also, the addPointSet method for some DVGeos takes a distributed kwarg, in which case we can pass it
+        sig = inspect.signature(DVGeo.addPointSet)
+        if "distributed" in sig.parameters:
+            dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, distributed=distributed, **kwargs)
+        else:
+            dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, **kwargs)
+        self.omPtSetList[ptName] = {"distributed": distributed}
 
         if add_output:
             # add an output to the om component
@@ -1124,8 +1131,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                 for k in xdot:
                                     # check if this dv is present
                                     if k in d_inputs:
-                                        # do the allreduce
-                                        xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
+                                        # do the allreduce if the pointset is distributed
+                                        if self.omPtSetList[ptSetName]["distributed"]:
+                                            xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
+                                        else:
+                                            xdotg[k] = xdot[k]
 
                                         # accumulate in the dict
                                         d_inputs[k] += xdotg[k][0]
