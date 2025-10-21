@@ -266,6 +266,8 @@ test_params_constraints_box = [
 @unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
 @parameterized_class(ffd_test_params)
 class TestDVGeoMPhysFFD(unittest.TestCase):
+    N_PROCS = 2
+
     def setUp(self):
         # give the OM Group access to the test case attributes
         dvInfo = self.dvInfo
@@ -286,7 +288,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
                 points[0, :] = [0.25, 0, 0]
                 points[1, :] = [-0.25, 0, 0]
                 ptName = "testPoints"
-                self.geometry.nom_addPointSet(points.flatten(), ptName)
+                self.geometry.nom_addPointSet(points.flatten(), ptName, distributed=False)
 
                 # create a reference axis for the parent
                 axisPoints = [[-1.0, 0.0, 0.0], [1.5, 0.0, 0.0]]
