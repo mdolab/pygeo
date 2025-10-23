@@ -102,7 +102,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             for _, DVGeo in self.DVGeos.items():
                 self.DVCon.setDVGeo(DVGeo, name=DVConName)
 
-        self.omPtSetList = {}
+        self.omPtSets = {}
 
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
@@ -112,7 +112,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 # retrieve corresponding output name
                 var_out = self.omPtInOutDict[var]
                 # add pointset if it doesn't already exist
-                if var_out not in self.omPtSetList:
+                if var_out not in self.omPtSets:
                     self.nom_addPointSet(inputs[var], var_out, add_output=False)
 
         # handle DV update and pointset changes for all of our DVGeos
@@ -122,7 +122,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
             # ouputs are the coordinates of the pointsets we have
             for ptName in DVGeo.points:
-                if ptName in self.omPtSetList:
+                if ptName in self.omPtSets:
                     # update this pointset and write it as output
                     outputs[ptName] = DVGeo.update(ptName).flatten()
 
@@ -262,7 +262,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, distributed=distributed, **kwargs)
         else:
             dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, **kwargs)
-        self.omPtSetList[ptName] = {"distributed": distributed}
+        self.omPtSets[ptName] = {"distributed": distributed}
 
         if add_output:
             # add an output to the om component
@@ -1101,7 +1101,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                     ptSetNames = DVGeo.ptSetNames
 
                 for ptSetName in ptSetNames:
-                    if ptSetName in self.omPtSetList:
+                    if ptSetName in self.omPtSets:
                         # Process the seeds
                         if doFwd:
                             # Collect the d_inputs associated with the current DVGeo
@@ -1133,7 +1133,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                     # check if this dv is present
                                     if k in d_inputs:
                                         # do the allreduce if the pointset is distributed
-                                        if self.omPtSetList[ptSetName]["distributed"]:
+                                        if self.omPtSets[ptSetName]["distributed"]:
                                             xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
                                         else:
                                             xdotg[k] = xdot[k]
