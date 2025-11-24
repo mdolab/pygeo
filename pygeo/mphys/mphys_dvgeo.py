@@ -1,3 +1,6 @@
+# Standard Python modules
+import inspect
+
 # External modules
 from mpi4py import MPI
 import numpy as np
@@ -35,6 +38,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # Need to initialize this here rather than `setup`,
         # since `nom_add_discipline_coords` can be called before `setup`
         self.omPtInOutDict = {}
+
+        self.update_jac = True
 
     def setup(self):
         # create a constraints object to go with this DVGeo(s)
@@ -97,7 +102,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             for _, DVGeo in self.DVGeos.items():
                 self.DVCon.setDVGeo(DVGeo, name=DVConName)
 
-        self.omPtSetList = []
+        self.omPtSets = {}
 
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
@@ -107,7 +112,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 # retrieve corresponding output name
                 var_out = self.omPtInOutDict[var]
                 # add pointset if it doesn't already exist
-                if var_out not in self.omPtSetList:
+                if var_out not in self.omPtSets:
                     self.nom_addPointSet(inputs[var], var_out, add_output=False)
 
         # handle DV update and pointset changes for all of our DVGeos
@@ -117,7 +122,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
             # ouputs are the coordinates of the pointsets we have
             for ptName in DVGeo.points:
-                if ptName in self.omPtSetList:
+                if ptName in self.omPtSets:
                     # update this pointset and write it as output
                     outputs[ptName] = DVGeo.update(ptName).flatten()
 
@@ -221,26 +226,47 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, outputName, add_output=False, DVGeoName=DVGeoName, **kwargs)
+            self.nom_addPointSet(points, outputName, add_output=False, DVGeoName=DVGeoName, distributed=True, **kwargs)
             self.add_input(inputName, distributed=True, val=points.flatten())
             self.add_output(outputName, distributed=True, val=points.flatten())
 
-    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
+    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, distributed=True, **kwargs):
+        """Add a pointset to the DVGeo object and create an output for it in the OpenMDAO component.
+
+        Parameters
+        ----------
+        points : numpy array
+            3D points to add to the DVGeo object, shape (N,3) or (3N,)
+        ptName : str
+            Name for the pointset
+        add_output : bool, optional
+            Whether to add the deformed points as an output of the component, by default True
+        DVGeoName : str, optional
+            The name of the DVGeo to add the points to, necessary if there are multiple DVGeo objects. By default `None`.
+        distributed : bool, optional
+            Whether the output of the component should be a distributed variable, by default True
+
+        Returns
+        -------
+        None or float
+            If using DVGeometryESP or DVGeometryVSP, returns the maximum distance between pointset and the CAD model
+        """
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
-        dMaxGlobal = None
-        if isinstance(DVGeo, DVGeometryESP):
-            # DVGeoESP can return a value to check the pointset distribution
-            dMaxGlobal = DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        # DVGeoESP and DVGeoVSP can return a value to check the pointset distribution
+        # Also, the addPointSet method for some DVGeos takes a distributed kwarg, in which case we can pass it
+        sig = inspect.signature(DVGeo.addPointSet)
+        if "distributed" in sig.parameters:
+            dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, distributed=distributed, **kwargs)
         else:
-            DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
-        self.omPtSetList.append(ptName)
+            dMaxGlobal = DVGeo.addPointSet(points.reshape(-1, 3), ptName, **kwargs)
+        self.omPtSets[ptName] = {"distributed": distributed}
 
         if add_output:
             # add an output to the om component
-            self.add_output(ptName, distributed=True, val=points.flatten())
+            self.add_output(ptName, distributed=distributed, val=points.flatten())
 
         return dMaxGlobal
 
@@ -269,6 +295,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeometry object
             DVGeometry object held by this geometry component
         """
+        # Calling this function before setup is not allowed because the DVGeo object(s) do not exist yet
+        if not hasattr(self, "DVGeos"):
+            raise RuntimeError(
+                "Cannot call `nom_getDVGeo` before OM_DVGEOCOMP's `setup` method has been called. If you are calling this function in the `setup` method of a group containing an OM_DVGEOCOMP, move the call to `configure` instead."
+            ) from None
+
         # if we have multiple DVGeos use the one specified by name
         if self.multDVGeo:
             DVGeo = self.DVGeos[DVGeoName]
@@ -1069,7 +1101,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                     ptSetNames = DVGeo.ptSetNames
 
                 for ptSetName in ptSetNames:
-                    if ptSetName in self.omPtSetList:
+                    if ptSetName in self.omPtSets:
                         # Process the seeds
                         if doFwd:
                             # Collect the d_inputs associated with the current DVGeo
@@ -1100,8 +1132,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                 for k in xdot:
                                     # check if this dv is present
                                     if k in d_inputs:
-                                        # do the allreduce
-                                        xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
+                                        # do the allreduce if the pointset is distributed
+                                        if self.omPtSets[ptSetName]["distributed"]:
+                                            xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
+                                        else:
+                                            xdotg[k] = xdot[k]
 
                                         # accumulate in the dict
                                         d_inputs[k] += xdotg[k][0]
