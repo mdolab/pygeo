@@ -14,9 +14,26 @@ class GeometricConstraint(ABC):
     """
 
     def __init__(self, name, nCon, lower, upper, scale, DVGeo, addToPyOpt):
+        """Create a geometric constraint object.
+
+        Parameters
+        ----------
+        name : str
+            Name for this constraint, will be used in pyOpt
+        nCon : int
+            Number of constraint values
+        lower : float or array, or None
+            Constraint lower bound, None means no lower bound
+        upper : float or array, or None
+            Constraint upper bound, None means no upper bound
+        scale : float or array, or None
+            Scaling factor for this constraint, None corresponds to 1.0
+        DVGeo : BaseDVGeometry
+            Geometry parameterization object
+        addToPyOpt : bool
+            Whether or not to add this constraint to pyOpt when addConstraintsPyOpt is called
         """
-        General init function. Every constraint has these functions
-        """
+
         self.name = name
         self.nCon = nCon
         self.lower = lower
