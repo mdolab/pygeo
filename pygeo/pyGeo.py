@@ -423,7 +423,12 @@ class pyGeo:
             for i in range(N):
                 if curves[i] is not None:
                     for j in range(len(newKnots)):
-                        if newKnots[j] not in curves[i].t:
+                        found = False
+                        for k_knot in curves[i].t:
+                            if abs(k_knot - newKnots[j]) < 1e-12:
+                                found = True
+                                break
+                        if not found:
                             curves[i].insertKnot(newKnots[j], mult[j])
 
             # If we want a pinched tip will will zero everything here.
