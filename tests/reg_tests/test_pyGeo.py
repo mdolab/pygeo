@@ -34,7 +34,7 @@ class TestPyGeo(unittest.TestCase):
         inputDir = os.path.join(baseDir, "../../input_files")
 
         if clash:
-            # This case, which uses two different airfoils with very similar point distributions, lead to an error due
+            # This case, which uses two different airfoils with very similar point distributions, led to an error due
             # to floating point precision issues in the clash detection algorithm. So now we test that it runs without
             # error.
             airfoil_list = [os.path.join(inputDir, "CRMTailRoot.dat"), os.path.join(inputDir, "CRMTailTip.dat")]
