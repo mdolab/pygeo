@@ -14,3 +14,6 @@ input_files
 *.vscode
 tests/reg_tests/reports/
 tests/reg_tests/test_MPhys*
+.serena/
+.claude/
+.antigravitycli/
