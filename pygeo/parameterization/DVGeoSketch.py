@@ -161,8 +161,8 @@ class DVGeoSketch(BaseDVGeometry):
         lowerBounds = OrderedDict()
         upperBounds = OrderedDict()
         for dvName in self.DVs:
-            lowerBounds[dvName] = self.DVs[dvName].lower
-            upperBounds[dvName] = self.DVs[dvName].upper
+            lowerBounds[dvName] = self.DVs[dvName].lower.real
+            upperBounds[dvName] = self.DVs[dvName].upper.real
 
         if self.useComposite:
             lowerBounds = self.mapXDictToComp(lowerBounds)

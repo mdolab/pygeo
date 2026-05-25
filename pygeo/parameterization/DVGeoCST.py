@@ -579,8 +579,8 @@ class DVGeometryCST(BaseDVGeometry):
         lowerBounds = {}
         upperBounds = {}
         for dvName, dv in self.DVs.items():
-            lowerBounds[dvName] = dv.lower
-            upperBounds[dvName] = dv.upper
+            lowerBounds[dvName] = dv.lower.real
+            upperBounds[dvName] = dv.upper.real
         return lowerBounds, upperBounds
 
     def getVarNames(self, **kwargs):
