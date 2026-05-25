@@ -6,10 +6,10 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 """
 
 # Standard Python modules
-import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 import copy
+import warnings
 
 
 class BaseDVGeometry(ABC):
