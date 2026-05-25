@@ -97,7 +97,7 @@ class BaseDVGeometry(ABC):
         lowerBounds : dict
             Dictionary of design variable lower bounds. The keys are the design variable names and the values are the lower bounds.
         upperBounds : dict
-            Dictionary of design variable upper bounds. The keys are the design variable names and the values are
+            Dictionary of design variable upper bounds. The keys are the design variable names and the values are the upper bounds. If a bound is not set, the value will be None.
         """
         pass
 

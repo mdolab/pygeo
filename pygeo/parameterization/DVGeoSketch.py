@@ -131,7 +131,7 @@ class DVGeoSketch(BaseDVGeometry):
         """
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
+        that would be suitable for a subsequent call to setDesignVars()
 
         Returns
         -------
@@ -161,8 +161,8 @@ class DVGeoSketch(BaseDVGeometry):
         lowerBounds = OrderedDict()
         upperBounds = OrderedDict()
         for dvName in self.DVs:
-            lowerBounds[dvName] = self.DVs[dvName].lower.real
-            upperBounds[dvName] = self.DVs[dvName].upper.real
+            lowerBounds[dvName] = self.DVs[dvName].lower.real if self.DVs[dvName].lower is not None else None
+            upperBounds[dvName] = self.DVs[dvName].upper.real if self.DVs[dvName].upper is not None else None
 
         if self.useComposite:
             lowerBounds = self.mapXDictToComp(lowerBounds)

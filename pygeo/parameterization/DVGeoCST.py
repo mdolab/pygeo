@@ -551,7 +551,7 @@ class DVGeometryCST(BaseDVGeometry):
     def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
-        Values are returned in a dictionary format that would be suitable for a subsequent call to setValues()
+        Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars()
 
         Returns
         -------
@@ -579,8 +579,8 @@ class DVGeometryCST(BaseDVGeometry):
         lowerBounds = {}
         upperBounds = {}
         for dvName, dv in self.DVs.items():
-            lowerBounds[dvName] = dv.lower.real
-            upperBounds[dvName] = dv.upper.real
+            lowerBounds[dvName] = dv.lower.real if dv.lower is not None else None
+            upperBounds[dvName] = dv.upper.real if dv.upper is not None else None
         return lowerBounds, upperBounds
 
     def getVarNames(self, **kwargs):

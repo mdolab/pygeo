@@ -1808,7 +1808,7 @@ class DVGeometry(BaseDVGeometry):
         # also flag the dCoefdDV as out of date
         self.dCoefdDVUpdated = False
 
-        # Now call setValues on the children. This way the
+        # Now call setDesignVars on the children. This way the
         # variables will be set on the children
         for child in self.children.values():
             child.setDesignVars(dvDict)
@@ -1868,15 +1868,15 @@ class DVGeometry(BaseDVGeometry):
         lowerBounds : dict
             Dictionary of design variable lower bounds. The keys are the design variable names and the values are the lower bounds.
         upperBounds : dict
-            Dictionary of design variable upper bounds. The keys are the design variable names and the values are
+            Dictionary of design variable upper bounds. The keys are the design variable names and the values are the upper bounds. If a bound is not set, the value will be None.
         """
         lowerBounds = {}
         upperBounds = {}
 
         for varList in self.varLists.values():
             for dvName, dv in varList.items():
-                lowerBounds[dvName] = dv.lower.real
-                upperBounds[dvName] = dv.upper.real
+                lowerBounds[dvName] = dv.lower.real if dv.lower is not None else None
+                upperBounds[dvName] = dv.upper.real if dv.upper is not None else None
 
         # Get the bounds from the children
         for child in self.children.values():
