@@ -25,6 +25,8 @@ class TestDVGeoFit(unittest.TestCase):
     N_PROCS = 2
     ptSetName = "test_pts"
     comm = MPI.COMM_WORLD
+    coordinateTol = 1e-5
+    fitSettings = {"xtol": 1e-6, "ftol": 1e-6, "gtol": 1e-5, "max_nfev": 40}
 
     def setUp(self):
         # Store the path where this current script lives
@@ -94,7 +96,7 @@ class TestDVGeoFit(unittest.TestCase):
 
         self.DVGeoRef.setDesignVars(self.perturbedDVs)
         self.DVGeoFit.setDesignVars(self.perturbedDVs)
-        fitDVs, result = self.DVGeoFit.fitDVGeo(self.DVGeoRef, self.ptSetName, xtol=1e-6, ftol=1e-6, gtol=1e-4)
+        fitDVs, result = self.DVGeoFit.fitDVGeo(self.DVGeoRef, self.ptSetName, **self.fitSettings)
         self.assertEqual(result.nfev, 1)
         self.assertEqual(result.success, True)
 
@@ -112,14 +114,12 @@ class TestDVGeoFit(unittest.TestCase):
         same geometry and similar DV values.
         """
         self.DVGeoRef.setDesignVars(self.perturbedDVs)
-        fitDVs, result = self.DVGeoFit.fitDVGeo(
-            self.DVGeoRef, self.ptSetName, xtol=1e-6, ftol=1e-6, gtol=1e-5, max_nfev=40
-        )
+        fitDVs, result = self.DVGeoFit.fitDVGeo(self.DVGeoRef, self.ptSetName, **self.fitSettings)
         self.assertEqual(result.success, True)
         # Check that the deformed points are the same
         ref_pts = self.DVGeoRef.update(self.ptSetName)
         fit_pts = self.DVGeoFit.update(self.ptSetName)
-        np.testing.assert_allclose(ref_pts, fit_pts, rtol=np.inf, atol=1e-5)
+        np.testing.assert_allclose(ref_pts, fit_pts, rtol=np.inf, atol=self.coordinateTol)
 
         # Check that the design variables are somewhat similar
         for key in fitDVs.keys():
