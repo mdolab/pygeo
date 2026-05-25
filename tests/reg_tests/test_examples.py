@@ -62,6 +62,11 @@ class TestExamples(unittest.TestCase):
         self.common_test("deform_geometry", "runScript.py", args=["--input_type", input_type])
 
     def tearDown(self):
-        for f in self.output_file_list:
-            os.remove(f)
-        os.chdir(self.cwd)
+        try:
+            for f in self.output_file_list:
+                try:
+                    os.remove(f)
+                except FileNotFoundError:
+                    pass
+        finally:
+            os.chdir(self.cwd)
