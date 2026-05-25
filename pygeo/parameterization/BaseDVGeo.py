@@ -6,6 +6,7 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 """
 
 # Standard Python modules
+import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 import copy
@@ -66,8 +67,10 @@ class BaseDVGeometry(ABC):
         pass
 
     def getValues(self):
-        DeprecationWarning(
-            "getValues() is deprecated and will be removed in pyGeo version 1.18. Use getDesignVars() instead. "
+        warnings.warn(
+            "getValues() is deprecated and will be removed in pyGeo version 1.18. Use getDesignVars() instead. ",
+            DeprecationWarning,
+            stacklevel=2,
         )
         return self.getDesignVars()
 
