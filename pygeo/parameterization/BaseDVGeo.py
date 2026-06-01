@@ -68,7 +68,7 @@ class BaseDVGeometry(ABC):
 
     def getValues(self):
         warnings.warn(
-            "getValues() is deprecated and will be removed in pyGeo version 1.18. Use getDesignVars() instead. ",
+            "getValues() is deprecated and will be removed in pyGeo version 1.20. Use getDesignVars() instead. ",
             DeprecationWarning,
             stacklevel=2,
         )
