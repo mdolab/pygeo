@@ -291,6 +291,8 @@ class pyGeo:
         the most commonly used options.
         """
 
+        KNOT_TOL = 1e-12
+
         if X is not None:
             Xsec = np.array(X)
         else:
@@ -394,7 +396,7 @@ class pyGeo:
                     toInsert = []
                     # Now go over the indices and see if we need to add
                     for j in range(len(indices)):
-                        if abs(baseKnots[indices[j]] - knots[j]) > 1e-12:
+                        if abs(baseKnots[indices[j]] - knots[j]) > KNOT_TOL:
                             toInsert.append(knots[j])
 
                     # Finally add the new indices and resort
@@ -411,7 +413,7 @@ class pyGeo:
             while i < len(baseKnots):
                 curKnot = baseKnots[i]
                 j = 1
-                while i + j < Nmax and abs(baseKnots[i + j] - curKnot) < 1e-12:
+                while i + j < Nmax and abs(baseKnots[i + j] - curKnot) < KNOT_TOL:
                     j += 1
                 i += j
                 newKnots.append(curKnot)
@@ -423,7 +425,12 @@ class pyGeo:
             for i in range(N):
                 if curves[i] is not None:
                     for j in range(len(newKnots)):
-                        if newKnots[j] not in curves[i].t:
+                        found = False
+                        for k_knot in curves[i].t:
+                            if abs(k_knot - newKnots[j]) < KNOT_TOL:
+                                found = True
+                                break
+                        if not found:
                             curves[i].insertKnot(newKnots[j], mult[j])
 
             # If we want a pinched tip will will zero everything here.
@@ -502,12 +509,11 @@ class pyGeo:
         knotsBot = botCurves[0].t.copy()
 
         print("Symmetrizing Knot Vectors ...")
-        eps = 1e-12
         for i in range(len(knotsTop)):
-            # Check if knotsTop[i] is not in knots_bot to within eps
+            # Check if knotsTop[i] is not in knots_bot to within KNOT_TOL
             found = False
             for j in range(len(knotsBot)):
-                if abs(knotsTop[i] - knotsBot[j]) < eps:
+                if abs(knotsTop[i] - knotsBot[j]) < KNOT_TOL:
                     found = True
 
             if not found:
@@ -516,10 +522,10 @@ class pyGeo:
                     botCurves[ii].insertKnot(knotsTop[i], 1)
 
         for i in range(len(knotsBot)):
-            # Check if knotsBot[i] is not in knotsTop to within eps
+            # Check if knotsBot[i] is not in knotsTop to within KNOT_TOL
             found = False
             for j in range(len(knotsTop)):
-                if abs(knotsBot[i] - knotsTop[j]) < eps:
+                if abs(knotsBot[i] - knotsTop[j]) < KNOT_TOL:
                     found = True
 
             if not found:

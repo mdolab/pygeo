@@ -18,34 +18,40 @@ class TestPyGeo(unittest.TestCase):
 
     def train(self):
         with BaseRegTest(self.refFile, train=True) as handler:
-            self.regTest(handler)
+            self.regTest(handler, clash=False)
+            self.regTest(handler, clash=True)
             handler.writeRef()
 
-    def test(self):
+    def test_original(self):
         with BaseRegTest(self.refFile, train=False) as handler:
-            self.regTest(handler)
+            self.regTest(handler, clash=False)
 
-    def regTest(self, handler):
-        dirName = os.path.join(baseDir, "../../input_files")
+    def test_clash(self):
+        with BaseRegTest(self.refFile, train=False) as handler:
+            self.regTest(handler, clash=True)
 
-        # Airfoil file
-        airfoil_list = [dirName + "/rae2822.dat"] * 2
-        naf = len(airfoil_list)  # number of airfoils
+    def regTest(self, handler, clash=False):
+        inputDir = os.path.join(baseDir, "../../input_files")
 
-        # Wing definition
-        # Airfoil leading edge positions
+        if clash:
+            # This case, which uses two different airfoils with very similar point distributions, led to an error due
+            # to floating point precision issues in the clash detection algorithm. So now we test that it runs without
+            # error.
+            airfoil_list = [os.path.join(inputDir, "CRMTailRoot.dat"), os.path.join(inputDir, "CRMTailTip.dat")]
+        else:
+            airfoil_list = [os.path.join(inputDir, "rae2822.dat")] * 2
+
+        naf = len(airfoil_list)
+
+        # Wing definition (Common to both)
         x = [0.0, 7.5]
         y = [0.0, 0.0]
         z = [0.0, 14.0]
-        offset = np.zeros((naf, 2))  # x-y offset applied to airfoil position before scaling
-
-        # Airfoil rotations
+        offset = np.zeros((naf, 2))
         rot_x = [0.0, 0.0]
         rot_y = [0.0, 0.0]
         rot_z = [0.0, 0.0]
-
-        # Airfoil scaling
-        chord = [5.0, 1.5]  # chord lengths
+        chord = [5.0, 1.5]
 
         # Run pyGeo
         wing = pyGeo(
@@ -68,4 +74,9 @@ class TestPyGeo(unittest.TestCase):
         for isurf in range(wing.nSurf):
             wing.surfs[isurf].computeData()
         surf = wing.surfs[isurf].data
-        handler.root_add_val("sum of surface data", sum(surf.flatten()), tol=1e-10)
+        label = "clash" if clash else "original"
+        handler.root_add_val(f"{label} sum of surface data", sum(surf.flatten()), tol=1e-10)
+
+
+if __name__ == "__main__":
+    unittest.main()
