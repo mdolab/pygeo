@@ -7,6 +7,7 @@ import unittest
 
 # External modules
 from baseclasses import BaseRegTest
+from baseclasses.testing import fails_at_version  # fails_at_version
 import commonUtils
 import numpy as np
 from stl import mesh
@@ -399,7 +400,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 12b: D8 FFD, random DV perturbation on test 10")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -430,7 +431,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 13b: D8 FFD, random DV perturbation on test 11")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
 
             for key in xDV:
                 np.random.seed(42)
@@ -464,7 +465,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 14b: D8 + Nozzle FFD, random DV perturbation on test 12")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -500,7 +501,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 15b: D8 + Nozzle FFD, random DV perturbation on test 13")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -539,7 +540,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 14b: D8 + Nozzle FFD, random DV perturbation on test 14")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -573,7 +574,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 17b: D8 + Nozzle FFD, random DV perturbationon test 15")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -606,7 +607,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 18b: D8 + Nozzle FFD, random DV perturbationon test 16")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -642,7 +643,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 19b: D8 + Nozzle FFD,  random DV perturbationon test 17")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -680,7 +681,7 @@ class RegTestPyGeo(unittest.TestCase):
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
             handler.root_print("Test 20b: D8 + Nozzle FFD,  random DV perturbationon test 18")
-            xDV = DVGeo.getValues()
+            xDV = DVGeo.getDesignVars()
             for key in xDV:
                 np.random.seed(42)
                 xDV[key] += np.random.rand(len(xDV[key]))
@@ -845,7 +846,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             commonUtils.testSensitivities(DVGeo, refDeriv, handler, pointset=2)
 
-            x = DVGeo.getValues()
+            x = DVGeo.getDesignVars()
 
             # Modifying the twist
             keyName = "twist"
@@ -921,7 +922,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             # now perturb the design with finite differences and compute FD gradients
             DVGeo.useComposite = False
-            DVGeo_DV = DVGeo.getValues()
+            DVGeo_DV = DVGeo.getDesignVars()
             DVs = OrderedDict()
 
             for dvName in DVGeo_DV:
@@ -989,7 +990,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             # composite DV
             DVGeo.complex = False
-            Composite_FFD = DVGeo.getValues()
+            Composite_FFD = DVGeo.getDesignVars()
             handler.root_add_val("Composite DVs :", Composite_FFD["ffdComp"], rtol=1e-12, atol=1e-12)
 
     def test_demoDesignVars(self):
@@ -1484,9 +1485,21 @@ class RegTestPyGeo(unittest.TestCase):
 
                 handler.root_add_val(f"new_coords_{ptName}", new_pts, rtol=1e-10, atol=1e-10)
 
+    @fails_at_version("pygeo", "1.20")
+    def test_getValues_deprecated(self):
+        """getValues() is a deprecated shim for getDesignVars(); it must warn and
+        return the same result. This test self-decommissions at pyGeo v1.20."""
+        DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
+        DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+
+        with self.assertWarns(DeprecationWarning):
+            shimValues = DVGeo.getValues()
+
+        directValues = DVGeo.getDesignVars()
+        self.assertEqual(list(shimValues.keys()), list(directValues.keys()))
+        for key in directValues:
+            np.testing.assert_array_equal(shimValues[key], directValues[key])
+
 
 if __name__ == "__main__":
     unittest.main()
-
-    # import xmlrunner
-    # unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'))

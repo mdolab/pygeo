@@ -150,7 +150,7 @@ def mainAxisPointAxi(val, DVgeo):
 
 
 def totalSensitivityFD(DVGeo, nPt, ptName, step=1e-1):
-    xDV = DVGeo.getValues()
+    xDV = DVGeo.getDesignVars()
     refPoints = DVGeo.update(ptName)
     # now get FD Sensitivity
     dIdxFD = {}
@@ -173,7 +173,7 @@ def totalSensitivityFD(DVGeo, nPt, ptName, step=1e-1):
 
 
 def totalSensitivityCS(DVGeo, nPt, ptName):
-    xDV = DVGeo.getValues()
+    xDV = DVGeo.getDesignVars()
 
     # now get CS Sensitivity
     dIdxCS = {}
