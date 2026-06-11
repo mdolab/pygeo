@@ -9,7 +9,7 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 import copy
-import warnings
+from baseclasses.testing import expire_deprecation
 
 
 class BaseDVGeometry(ABC):
@@ -66,12 +66,8 @@ class BaseDVGeometry(ABC):
         """
         pass
 
+    @expire_deprecation(package_name="pygeo", removal_version="1.20", new_name="getDesignVars")
     def getValues(self):
-        warnings.warn(
-            "getValues() is deprecated and will be removed in pyGeo version 1.20. Use getDesignVars() instead. ",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self.getDesignVars()
 
     @abstractmethod

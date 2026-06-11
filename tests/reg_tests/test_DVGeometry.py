@@ -7,7 +7,6 @@ import unittest
 
 # External modules
 from baseclasses import BaseRegTest
-from baseclasses.testing import fails_at_version  # fails_at_version
 import commonUtils
 import numpy as np
 from stl import mesh
@@ -1485,7 +1484,6 @@ class RegTestPyGeo(unittest.TestCase):
 
                 handler.root_add_val(f"new_coords_{ptName}", new_pts, rtol=1e-10, atol=1e-10)
 
-    @fails_at_version("pygeo", "1.20")
     def test_getValues_deprecated(self):
         """getValues() is a deprecated shim for getDesignVars(); it must warn and
         return the same result. This test self-decommissions at pyGeo v1.20."""
