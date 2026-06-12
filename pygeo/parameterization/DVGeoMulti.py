@@ -523,7 +523,7 @@ class DVGeometryMulti:
         for pointSet in self.updated:
             self.updated[pointSet] = False
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
         Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars().
@@ -538,12 +538,33 @@ class DVGeometryMulti:
         dvDict = {}
         # we need to loop over each DVGeo object and get the DVs
         for comp in self.compNames:
-            dvDictComp = self.comps[comp].DVGeo.getValues()
+            dvDictComp = self.comps[comp].DVGeo.getDesignVars()
             # we need to loop over these DVs
             for k, v in dvDictComp.items():
                 dvDict[k] = v
 
         return dvDict
+
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = {}
+        upperBounds = {}
+        # we need to loop over each DVGeo object and get the DVs
+        for comp in self.compNames:
+            lowerBoundsComp, upperBoundsComp = self.comps[comp].DVGeo.getDVBounds()
+            lowerBounds.update(lowerBoundsComp)
+            upperBounds.update(upperBoundsComp)
+
+        return lowerBounds, upperBounds
 
     def update(self, ptSetName, config=None):
         """
@@ -591,6 +612,16 @@ class DVGeometryMulti:
         self.updated[ptSetName] = True
 
         return newPts
+
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        return self.points[ptSetName].points
 
     def pointSetUpToDate(self, ptSetName):
         """

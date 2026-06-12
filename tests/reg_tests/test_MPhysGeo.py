@@ -34,6 +34,34 @@ except ImportError:
     ocsmInstalled = False
 
 
+def assert_check_totals(totals, atol, rtol):
+    """
+    Check the totals dictionary for the forward and reverse mode derivatives.
+
+    This is better than OpenMDAO's `assert_check_totals` because it uses numpy's `assert_allclose` which eliminates the
+    issue of huge relative errors when comparing very small values.
+    """
+    for key in totals:
+        derivs = totals[key]
+        ref = derivs["J_fd"]
+        if "J_fwd" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_fwd"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Forward derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
+        if "J_rev" in derivs:
+            np.testing.assert_allclose(
+                derivs["J_rev"],
+                ref,
+                atol=atol,
+                rtol=rtol,
+                err_msg=f"Reverse derivatives of {key[0]} w.r.t {key[1]} do not match finite difference",
+            )
+
+
 # input files for all DVGeo types
 input_path = os.path.dirname(os.path.abspath(__file__))
 outerFFD = os.path.join(input_path, "..", "..", "input_files", "outerBoxFFD.xyz")

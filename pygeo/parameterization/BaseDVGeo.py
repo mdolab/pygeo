@@ -9,6 +9,13 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 import copy
+from difflib import get_close_matches
+
+# External modules
+from mpi4py import MPI
+import numpy as np
+from scipy.optimize import least_squares
+import scipy.sparse as sp
 
 
 class BaseDVGeometry(ABC):
@@ -16,9 +23,10 @@ class BaseDVGeometry(ABC):
     Abstract class for a basic geometry object
     """
 
-    def __init__(self, fileName, name):
+    def __init__(self, fileName, name, comm=None):
         self.fileName = fileName
         self.name = name
+        self.comm = comm if comm is not None else MPI.COMM_WORLD
 
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
@@ -65,16 +73,36 @@ class BaseDVGeometry(ABC):
         """
         pass
 
-    @abstractmethod
     def getValues(self):
+        DeprecationWarning(
+            "getValues() is deprecated and will be removed in pyGeo version 1.18. Use getDesignVars() instead. "
+        )
+        return self.getDesignVars()
+
+    @abstractmethod
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
-        Values are returned in a dictionary format that would be suitable for a subsequent call to setValues()
+        Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars()
 
         Returns
         -------
         dvDict : dict
             Dictionary of design variables
+        """
+        pass
+
+    @abstractmethod
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds. The keys are the design variable names and the values are the lower bounds.
+        upperBounds : dict
+            Dictionary of design variable upper bounds. The keys are the design variable names and the values are
         """
         pass
 
@@ -188,6 +216,17 @@ class BaseDVGeometry(ABC):
         """
         pass
 
+    @abstractmethod
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        pass
+
     def mapXDictToDVGeo(self, inDict):
         """
         Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
@@ -286,3 +325,203 @@ class BaseDVGeometry(ABC):
         """
         outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
         return outVec
+
+    def fitDVGeo(self, refDVGeo, ptSetName, pointFraction=None, callback=None, **kwargs):
+        """
+        Fit the design variables of this DVGeo object to match the pointset of another DVGeo object. This could be used,
+        for example, to fit an ESP/VSP model to a geometry optimized using an FFD.
+
+        A more general version of this capability is provided by the :func:`fitPointset` method, which fits an existing
+        pointset in this DVGeo object to an arbitrary set of coordinates. This may be useful if the points you are
+        trying to fit to do not come from a DVGeo object.
+
+        Parameters
+        ----------
+        refDVGeo : BaseDVGeometry
+            The reference DVGeometry object to fit to. The fit will be performed based on the current DVs set in this object.
+        ptSetName : str
+            The name of the pointset to fit.
+        pointFraction : float
+            Fraction of points to use for fitting. This can be useful to reduce the cost of fitting for a large pointset.
+            However, the downsampling is random, so results may vary between calls. By default, all points are used.
+        callback : function
+            A user-supplied function to be called at each iteration. The function is called as ``callback(self, ptSetName, iteration)``
+            where ``self`` is the DVGeo object being fit, ``ptSetName`` is the name of the pointset being fit, and
+            ``iteration`` is the current iteration number.
+        \*\*kwargs :
+            Additional keyword arguments to be passed to scipy's least squares function.
+
+        Returns
+        -------
+        dvDict : dict
+            Design variable values that most closely fit the pointset to the new points.
+        result : OptimizeResult
+            Scipy OptimizeResult object containing the result of the least squares optimization.
+            See `<https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html>`_ for more
+            details.
+        """
+        # Get the reference point coordinates from the reference DVGeo object and poterntially downsample them
+        refPointCoords = refDVGeo.update(ptSetName)
+        numPoints = refPointCoords.shape[0]
+        if pointFraction is not None:
+            if pointFraction <= 0.0 or pointFraction > 1.0:
+                raise ValueError("pointFraction must be between 0 and 1.")
+            numPointsToFit = int(numPoints * pointFraction)
+            indices = np.random.choice(numPoints, numPointsToFit, replace=False)
+            refPointCoords = refPointCoords[indices, :]
+        else:
+            indices = np.arange(numPoints)
+
+        # If the pointset we're using already exists in this DVGeo object, and we're not downsampling, we can use it
+        # directly, after checking that it is the same. Otherwise we need to add a new pointset
+        addNewPointSet = True
+        if ptSetName in self.points and pointFraction is None:
+            # Check that the pointset has the same number of points as the reference pointset
+            ptSetsMatch = self.points[ptSetName].shape[0] == numPoints and np.allclose(
+                self.points[ptSetName][indices, :], refPointCoords
+            )
+            if ptSetsMatch:
+                addNewPointSet = False
+            else:
+                Warning(
+                    f"Point set '{ptSetName}' already exists but does not match the reference coordinates. Adding a new pointset to use for fitting."
+                )
+
+        if addNewPointSet:
+            # add the pointset, using the original coordinates
+            origPointCoords = refDVGeo.getOrigPoints(ptSetName)[indices, :]
+            newPtSetName = f"{ptSetName}_fit"
+            ptSetName = newPtSetName
+            self.addPointSet(origPointCoords, ptSetName)
+
+        # Now we can fit the pointset to the reference coordinates
+        return self.fitPointset(ptSetName, refPointCoords, callback=callback, **kwargs)
+
+    def fitPointset(self, ptSetName, newPointCoords, callback=None, **kwargs):
+        """Solve a least squares problem to find the design variables values that map a pointset as closely as possible
+        to a new set of coordinates.
+
+        Parameters
+        ----------
+        ptSetName : str
+            The name of the pointset to fit. Must be one of the pointsets added to the DVGeo object.
+        newPointCoords : array, size (N, 3)
+            The new coordinates to fit the pointset to. Must have the same number of points as the pointset being fit
+            and have the same ordering.
+        callback : function
+            A user-supplied function to be called at each iteration. The function is called as ``callback(self, ptSetName, iteration)``
+            where ``self`` is the DVGeo object being fit, ``ptSetName`` is the name of the pointset being fit, and
+            ``iteration`` is the current iteration number.
+        \*\*kwargs :
+            Additional keyword arguments to be passed to scipy's `least_squares` function. See
+            `<https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html>`_ for more details.
+
+        Returns
+        -------
+        dvDict : dict
+            Design variable values that most closely fit the pointset to the new points.
+        result : OptimizeResult
+            Scipy OptimizeResult object containing the result of the least squares optimization.
+            See `<https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html>`_ for more
+            details.
+        """
+        # Verify that the pointset exists and that there are the correct number of points to fit
+        if ptSetName not in self.ptSetNames:
+            closestMatch = get_close_matches(ptSetName, self.ptSetNames, n=1, cutoff=0.0)[0]
+            raise ValueError(f"Point set '{ptSetName}' not found. Did you mean '{closestMatch}'?")
+
+        numLocalPoints = self.points[ptSetName].shape[0]
+        # Sum up the number of points across all procs if necessary
+        if self.comm.size > 1:
+            numTotalPoints = self.comm.allreduce(numLocalPoints, op=MPI.SUM)
+        else:
+            numTotalPoints = numLocalPoints
+
+        numPointsToFit = newPointCoords.shape[0]
+        if numLocalPoints != numPointsToFit:
+            raise ValueError(
+                f"Point set '{ptSetName}' has {numLocalPoints} points on rank {self.comm.rank}, "
+                f"but {numPointsToFit} points were provided to fit."
+            )
+
+        # Get the initial design variable values and their bounds
+        initialDVDict = self.getDesignVars()
+        lowerBoundsDict, upperBoundsDict = self.getDVBounds()
+        initialDVArray = self.convertDictToSensitivity(initialDVDict).flatten()
+        lowerBoundsArray = self.convertDictToSensitivity(lowerBoundsDict).flatten()
+        upperBoundsArray = self.convertDictToSensitivity(upperBoundsDict).flatten()
+
+        iteration_counter = [0]
+
+        def computePointCoords(x):
+            """Compute the coordinates of the pointset given the design variables."""
+            self.setDesignVars(self.convertSensitivityToDict(x.reshape(1, -1), out1D=True))
+            return self.update(ptSetName).reshape(-1, 3)
+
+        def computeCoordinateResiduals(x):
+            """Compute the residuals, simply the difference in the two sets of coordinates."""
+            updatedPoints = computePointCoords(x)
+            if callback is not None:
+                callback(self, ptSetName, iteration_counter[0])
+            iteration_counter[0] += 1
+            # Compute the residual as the difference in coordinates, flattened to a 1D array, then collect across all procs
+            localRes = (updatedPoints - newPointCoords).flatten()
+            localRes = self.comm.allgather(localRes)
+            # Concatenate the local residuals from all processes into a single array
+            return np.concatenate(localRes, axis=0)
+
+        def computeCoordinateJacobian(x):
+            """Compute the Jacobian of the residual.
+
+            Since the residual is simply xNew - xRef, the Jacobian is just the sensitivity of the point coordinates
+            with respect to the design variables.
+
+            There is no method common to all DVGeo classes to compute the full Jacobian, so we compute it using forward
+            Jacobian vector products, seeding each design variable in turn to get one column of the Jacobian at a time.
+            """
+
+            # Create a seed vector for the design variables
+            numDVs = self.getNDV()
+            seed = np.zeros(numDVs)
+            rowInd = []
+            colInd = []
+            values = []
+            for ii in range(numDVs):
+                seed[ii] = 1.0
+                # Propogate seed through to the point coordinates
+                localCoordSens = self.totalSensitivityProd(
+                    self.convertSensitivityToDict(seed.reshape(1, -1)), ptSetName
+                ).flatten()
+
+                coordSensList = self.comm.allgather(localCoordSens)
+                # Concatenate the local sensitivities from all processes into a single array
+                coordSens = np.concatenate(coordSensList, axis=0)
+
+                # Store the non-zero entires of this column of the Jacobian
+                nonZeroInd = np.nonzero(coordSens)[0]
+                numNonZero = nonZeroInd.size
+                if numNonZero > 0:
+                    values += list(coordSens[nonZeroInd])
+                    colInd += [ii] * numNonZero
+                    rowInd.extend(nonZeroInd)
+
+                seed[ii] = 0.0
+            return sp.csr_matrix((values, (rowInd, colInd)), shape=(3 * numTotalPoints, numDVs))
+
+        # Set some default kwargs for the least_squares function
+        defaultKwargs = {"xtol": 1e-8, "ftol": 1e-8, "gtol": 1e-2, "verbose": 2, "max_nfev": 20}
+        # Update the default kwargs with any user-supplied kwargs
+        defaultKwargs.update(kwargs)
+        # Now solve the least squares problem using scipy's least_squares function
+        result = least_squares(
+            computeCoordinateResiduals,
+            initialDVArray,
+            jac=computeCoordinateJacobian,
+            bounds=(lowerBoundsArray, upperBoundsArray),
+            **defaultKwargs,
+        )
+
+        # Convert the result back to a dictionary of design variables
+        dvDict = self.convertSensitivityToDict(result.x.reshape(1, -1), out1D=True)
+
+        return dvDict, result
