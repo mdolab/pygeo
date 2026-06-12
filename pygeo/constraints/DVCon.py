@@ -1,10 +1,13 @@
 # Standard Python modules
 from collections import OrderedDict
+import os
+import warnings
 
 # External modules
 from baseclasses.utils import Error
 import numpy as np
 from pyspline import Curve
+from scipy.optimize import root
 
 # Local modules
 from .. import geo_utils, pyGeo
@@ -349,20 +352,33 @@ class DVConstraints:
             File name for tecplot file. Should have a .dat extension or a
             .dat extension will be added automatically.
         """
+        # make sure the file name has a .dat extension
+        baseName = os.path.splitext(fileName)[0]
+        fileName = baseName + ".dat"
+        with open(fileName, "w") as f:
+            f.write('TITLE = "DVConstraints Data"\n')
+            f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ"\n')
 
-        f = open(fileName, "w")
-        f.write('TITLE = "DVConstraints Data"\n')
-        f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ"\n')
+            # loop over the constraints and add their data to the tecplot file
+            for conTypeKey in self.constraints:
+                constraint = self.constraints[conTypeKey]
+                for key in constraint:
+                    try:
+                        constraint[key].writeTecplot(f)
+                    except NotImplementedError:
+                        warnings.warn(
+                            f"writeTecplot not implemented for {constraint[key].__class__.__name__}, skipping",
+                            stacklevel=2,
+                        )
 
-        # loop over the constraints and add their data to the tecplot file
-        for conTypeKey in self.constraints:
-            constraint = self.constraints[conTypeKey]
-            for key in constraint:
-                constraint[key].writeTecplot(f)
-
-        for key in self.linearCon:
-            self.linearCon[key].writeTecplot(f)
-        f.close()
+            for key in self.linearCon:
+                if hasattr(self.linearCon[key], "writeTecplot"):
+                    self.linearCon[key].writeTecplot(f)
+                else:
+                    warnings.warn(
+                        f"writeTecplot not implemented for {self.linearCon[key].__class__.__name__}, skipping",
+                        stacklevel=2,
+                    )
 
     def writeSurfaceTecplot(self, fileName, surfaceName="default", fromDVGeo=None):
         """
@@ -579,7 +595,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -600,7 +616,7 @@ class DVConstraints:
 
         self._checkDVGeo(DVGeoName)
 
-        coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
+        coords = self._generateGridIntersections(leList, teList, nSpan, nChord, surfaceName)
 
         # Get the total number of spanwise sections
         nSpanTotal = np.sum(nSpan)
@@ -630,6 +646,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addThicknessConstraints1D(
         self,
@@ -739,7 +756,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -751,24 +768,12 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         # Create mesh of intersections
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = np.zeros((nCon, 2, 3))
-        # Project all the points
-        for i in range(nCon):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i, 0] = up
-            coords[i, 1] = down
+        coords[:, 0], coords[:, 1] = self._projectToSurface(surfaceName, X, axis)
 
         # Create the thickness constraint object:
         coords = coords.reshape((nCon * 2, 3))
@@ -790,6 +795,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addProximityConstraints(
         self,
@@ -900,7 +906,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -979,6 +985,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addLERadiusConstraints(
         self,
@@ -1103,7 +1110,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1121,36 +1128,18 @@ class DVConstraints:
             X = constr_line(s)
         coords = np.zeros((nSpan, 3, 3))
 
-        # Create surface intersections
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
-        for i in range(nSpan):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i, 0] = up
-            coords[i, 1] = down
+        up, down = self._projectToSurface(surfaceName, X, axis)
+        coords[:, 0, :] = up
+        coords[:, 1, :] = down
 
         # Calculate mid-points
         midPts = (coords[:, 0, :] + coords[:, 1, :]) / 2.0
 
         # Project to get leading edge point
-        lePts = np.zeros((nSpan, 3))
         chordDir = np.array(chordDir, dtype="d").flatten()
         chordDir /= np.linalg.norm(chordDir)
-        for i in range(nSpan):
-            # Project actual node:
-            lePts[i], fail = geo_utils.projectNodePosOnly(X[i], chordDir, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) in direction (%f, %f, %f)."
-                    % (X[i, 0], X[i, 1], X[i, 2], chordDir[0], chordDir[1], chordDir[2])
-                )
+        lePts, _ = self._projectToSurface(surfaceName, X, chordDir)
 
         # Check that points can form radius
         d = np.linalg.norm(coords[:, 0, :] - coords[:, 1, :], axis=1)
@@ -1179,6 +1168,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = RadiusConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addLocationConstraints1D(
         self,
@@ -1260,7 +1250,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1290,6 +1280,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = LocationConstraint(
             conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addProjectedLocationConstraints1D(
         self,
@@ -1385,7 +1376,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1394,26 +1385,13 @@ class DVConstraints:
         self._checkDVGeo(DVGeoName)
         # Create the points to constrain
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
 
-        coords = np.zeros((nCon, 2, 3))
-        # Project all the points
-        for i in range(nCon):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i, 0] = up
-            coords[i, 1] = down
+        up, down = self._projectToSurface(surfaceName, X, axis)
 
-        X = (1 - bias) * coords[:, 1] + bias * coords[:, 0]
+        X = (1 - bias) * down + bias * up
 
         # X is now what we want to constrain
         if lower is None:
@@ -1433,15 +1411,17 @@ class DVConstraints:
         self.constraints[typeName][conName] = LocationConstraint(
             conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addThicknessToChordConstraints1D(
         self,
         ptList,
+        leList,
+        teList,
         nCon,
-        axis,
-        chordDir,
         lower=1.0,
         upper=3.0,
+        scaled=True,
         scale=1.0,
         name=None,
         addToPyOpt=True,
@@ -1450,124 +1430,104 @@ class DVConstraints:
         compNames=None,
     ):
         r"""
-        Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
-
-        See below for a schematic
-
-        .. code-block:: text
-
-          Planform view of the wing: The '+' are the (three dimensional)
-          points that are supplied in ptList:
-
-          Physical extent of wing
-                                   \
-          __________________________\_________
-          |                  +               |
-          |                -/                |
-          |                /                 |
-          | +-------+-----+                  |
-          |              4-points defining   |
-          |              poly-line           |
-          |                                  |
-          |__________________________________/
+        Identical to addThicknessConstraints1D except that the values computed are thickness-to-chord ratios. The chord
+        lengths are computed based on the leading and trailing edge points provided by the user.
 
 
         Parameters
         ----------
-        ptList : list or array of size (N x 3) where N >=2
-            The list of points forming a poly-line along which the
-            thickness constraints will be added.
+        ptList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints1D>`
 
-        nCon : int
-            The number of thickness to chord ratio constraints to add
+        nCon :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints1D>`
 
-        axis : list or array of length 3
-            The direction along which the projections will occur.
-            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+        leList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        chordDir : list or array or length 3
-            The direction defining "chord". This will typically be the
-            xasis ([1,0,0]). The magnitude of the vector doesn't
-            matter.
+        teList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        lower : float or array of size nCon
+        lower : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-            The lower bound for the constraint. A single float will
-            apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. This
-            constraint can only be used in "scaled" mode. That means,
-            the actual t/c is *never* computed. This constraint can
-            only be used to constrain the relative change in t/c. A
-            lower bound of 1.0, therefore mean the t/c cannot
-            decrease. This is the typical use of this constraint.
+        upper : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        upper : float or array of size nCon
-            The upper bound for the constraint. A single float will
-            apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint.
+        scaled : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        scale : float or array of size nCon
-            This is the optimization scaling of the
-            constraint. Typically this parameter will not need to be
-            changed. If the thickness constraints are scaled, this
-            already results in well-scaled constraint values, and
-            scale can be left at 1.0. If scaled=False, it may changed
-            to a more suitable value of the resulting physical
-            thickness have magnitudes vastly different than O(1).
+        scale : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        name : str
-            Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constraint names
-            need to be distinguished **or** you are using this set of
-            thickness constraints for something other than a direct
-            constraint in pyOptSparse.
+        name : , optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        addToPyOpt : bool
-            Normally this should be left at the default of True. If
-            the values need to be processed (modified) *before* they are
-            given to the optimizer, set this flag to False.
+        addToPyOpt : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        DVGeoName : str
-            Name of the DVGeo object to compute the constraint with. You only
-            need to set this if you're using multiple DVGeo objects
-            for a problem. For backward compatibility, the name is 'default' by default
+        surfaceName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
-        compNames : list
-            If using DVGeometryMulti, the components to which the point set associated
-            with this constraint should be added.
-            If None, the point set is added to all components.
+        DVGeoName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+
+        compNames : list, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
 
         """
         self._checkDVGeo(DVGeoName)
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        # Create curves for leading and trailing edge, and the constraint line
+        LECurve = Curve(X=leList, k=2)
+        TECurve = Curve(X=teList, k=2)
+        ConstraintCurve = Curve(X=ptList, k=2)
 
-        constr_line = Curve(X=ptList, k=2)
+        # Infer the spanwise direction from the LE curve
+        spanInd = np.argmax(np.array(leList[-1]) - np.array(leList[0]))
+        # Generate constraint locations
         s = np.linspace(0, 1, nCon)
-        X = constr_line(s)
-        coords = np.zeros((nCon, 4, 3))
-        chordDir /= np.linalg.norm(np.array(chordDir, "d"))
-        # Project all the points
-        for i in range(nCon):
-            # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail:
+        X = ConstraintCurve(s)
+
+        # Since the LE/TE curves may have different extents, we can't just sample the LE and TE curves at the same s
+        # coordinates to get points aligned with the constrain locations. Instead we will search for the points on the
+        # LE and TE that have the same spanwise coordinates
+        XLE = np.zeros_like(X)
+        XTE = np.zeros_like(X)
+
+        def locationError(s, targetSpanLocs, curve, spanInd):
+            pts = curve(s)
+            return pts[:, spanInd] - targetSpanLocs
+
+        for curve, Xout in zip([LECurve, TECurve], [XLE, XTE]):
+            targetSpanLocs = X[:, spanInd]
+            if any(targetSpanLocs < curve(0)[spanInd]) or any(targetSpanLocs > curve(1)[spanInd]):
                 raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                    "The provided constraint line extends beyond the leading or trailing edge curves. "
+                    "Make sure the spanwise extent of ptList is within that of leList and teList."
                 )
+            s0 = np.linspace(0, 1, nCon)
+            sSol = root(locationError, s0, args=(targetSpanLocs, curve, spanInd))
+            Xout[:] = curve(sSol.x)
 
-            coords[i, 0] = up
-            coords[i, 1] = down
-            height = np.linalg.norm(coords[i, 0] - coords[i, 1])
-            # Third point is the mid-point of those
-            coords[i, 2] = 0.5 * (up + down)
+        thicknessCoords = np.zeros((nCon, 2, 3))
 
-            # Fourth point is along the chordDir
-            coords[i, 3] = coords[i, 2] + 0.1 * height * chordDir
+        # Compute the projection direction by taking the cross product of the spanwise and chordwise directions
+        spanDir = np.roll(X, -1, axis=0) - np.roll(X, 1, axis=0)
+        spanDir[0] = X[1] - X[0]
+        spanDir[-1] = X[-1] - X[-2]
+        chordDir = XLE - XTE
+        projectionDirs = np.cross(chordDir, spanDir)
+        projectionDirs /= np.linalg.norm(projectionDirs, axis=1)[:, np.newaxis]
 
-        # Create the thickness constraint object:
-        coords = coords.reshape((nCon * 4, 3))
+        # Project points along the constraint line to the upper and lower surfaces
+        up, down = self._projectToSurface(surfaceName, X, projectionDirs)
+        thicknessCoords[:, 0] = up
+        thicknessCoords[:, 1] = down
+
+        LeTeCoords = np.zeros((nCon, 2, 3))
+        LeTeCoords[:, 0] = XLE
+        LeTeCoords[:, 1] = XTE
 
         typeName = "thickCon"
         if typeName not in self.constraints:
@@ -1577,8 +1537,111 @@ class DVConstraints:
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessToChordConstraint(
-            conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
+            name=conName,
+            thicknessCoords=thicknessCoords,
+            LeTeCoords=LeTeCoords,
+            lower=lower,
+            upper=upper,
+            scaled=scaled,
+            scale=scale,
+            DVGeo=self.DVGeometries[DVGeoName],
+            addToPyOpt=addToPyOpt,
+            compNames=compNames,
         )
+        return self.constraints[typeName][conName]
+
+    def addThicknessToChordConstraints2D(
+        self,
+        leList,
+        teList,
+        nSpan,
+        nChord,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+        compNames=None,
+        sectionMax=False,
+        ksRho=50.0,
+    ):
+        """Similar to addThicknessConstraints2D except that the values computed are thickness-to-chord ratios.
+
+        The chord lengths are computed based on the leading and trailing edge points provided by the user.
+
+        Parameters
+        ----------
+        leList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        teList :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        nSpan :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        nChord :
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        lower : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        upper : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        scaled : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        scale : float, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        name : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        addToPyOpt : bool, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        surfaceName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        DVGeoName : str, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        compNames : list, optional
+            See :meth:`addThicknessConstraints2D <.DVConstraints.addThicknessConstraints2D>`
+        sectionMax : bool, optional
+            If True, the output values are the maximum thickness-to-chord ratio in each section, computed using KS
+            aggregation.
+        ksRho : float, optional
+            The rho value to use for KS aggregation if ``sectionMax=True``
+        """
+
+        self._checkDVGeo(DVGeoName)
+
+        if nChord < 2:
+            raise Error("nChord must be at least 2")
+
+        thicknessCoords = self._generateGridIntersections(leList, teList, nSpan, nChord, surfaceName)
+
+        # Create leading and trailing edge points at the midpoint of the forward and rearmost thickness points
+        LeTeCoords = np.zeros((nSpan, 2, 3))
+        for ii in [0, -1]:
+            LeTeCoords[:, ii, :] = 0.5 * (thicknessCoords[:, ii, 0, :] + thicknessCoords[:, ii, 1, :])
+
+        typeName = "thickCon"
+        if typeName not in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+        if name is None:
+            conName = f"{self.name}_thickness_to_chord_constraints_{len(self.constraints[typeName])}"
+        else:
+            conName = name
+
+        self.constraints[typeName][conName] = ThicknessToChordConstraint(
+            conName,
+            thicknessCoords,
+            LeTeCoords,
+            lower,
+            upper,
+            scaled,
+            scale,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+            compNames,
+            sectionMax,
+            ksRho,
+        )
+        return self.constraints[typeName][conName]
 
     def addTriangulatedSurfaceConstraint(
         self,
@@ -1704,6 +1767,7 @@ class DVConstraints:
             max_perim,
             heuristic_dist,
         )
+        return self.constraints[typeName][conName]
 
     def addTriangulatedVolumeConstraint(
         self,
@@ -1800,6 +1864,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = TriangulatedVolumeConstraint(
             conName, surface, surfaceName, lower, upper, scaled, scale, DVGeo, addToPyOpt
         )
+        return self.constraints[typeName][conName]
 
     def addVolumeConstraint(
         self,
@@ -1926,7 +1991,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -1943,7 +2008,7 @@ class DVConstraints:
         else:
             conName = name
 
-        coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
+        coords = self._generateGridIntersections(leList, teList, nSpan, nChord, surfaceName)
 
         # Get the total number of spanwise sections
         nSpanTotal = np.sum(nSpan)
@@ -1964,6 +2029,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addCompositeVolumeConstraint(
         self, vols, lower=1.0, upper=3.0, scaled=True, scale=1.0, name=None, addToPyOpt=True, DVGeoName="default"
@@ -2055,6 +2121,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = CompositeVolumeConstraint(
             conName, volCons, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
         )
+        return self.constraints[typeName][conName]
 
     def addLeTeConstraints(
         self,
@@ -2252,6 +2319,7 @@ class DVConstraints:
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, np.ones(n), np.ones(n), lower=0, upper=0, DVGeo=DVGeo, config=config
         )
+        return self.linearCon[conName]
 
     def addLinearConstraintsShape(
         self,
@@ -2385,6 +2453,7 @@ class DVConstraints:
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper, DVGeo, config=config
         )
+        return self.linearCon[conName]
 
     def addGearPostConstraint(
         self,
@@ -2465,7 +2534,7 @@ class DVConstraints:
             the values need to be processed (modified) *before* they are
             given to the optimizer, set this flag to False.
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2473,8 +2542,6 @@ class DVConstraints:
         """
 
         self._checkDVGeo(DVGeoName)
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         typeName = "gearCon"
         if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
@@ -2485,9 +2552,9 @@ class DVConstraints:
             conName = name
 
         # Project the actual location we were give:
-        up, down, fail = geo_utils.projectNode(position, axis, p0, p1 - p0, p2 - p0)
-        if fail > 0:
-            raise Error("There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)." % (position))
+        up, down = self._projectToSurface(surfaceName, position, axis)
+        up = up.flatten()
+        down = down.flatten()
 
         self.constraints[typeName][conName] = GearPostConstraint(
             conName,
@@ -2503,6 +2570,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addCircularityConstraint(
         self,
@@ -2589,7 +2657,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2615,6 +2683,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = CircularityConstraint(
             conName, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addSurfaceAreaConstraint(
         self,
@@ -2680,7 +2749,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2712,6 +2781,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addProjectedAreaConstraint(
         self,
@@ -2786,7 +2856,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2837,6 +2907,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addPlanarityConstraint(
         self,
@@ -2899,7 +2970,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -2936,6 +3007,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addColinearityConstraint(
         self,
@@ -3001,7 +3073,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -3031,6 +3103,7 @@ class DVConstraints:
         self.constraints[typeName][conName] = ColinearityConstraint(
             conName, lineAxis, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
+        return self.constraints[typeName][conName]
 
     def addCurvatureConstraint(
         self,
@@ -3118,7 +3191,7 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -3170,6 +3243,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addCurvatureConstraint1D(
         self,
@@ -3301,7 +3375,7 @@ class DVConstraints:
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
 
-        compNames : list
+        compNames : list, optional
             If using DVGeometryMulti, the components to which the point set associated
             with this constraint should be added.
             If None, the point set is added to all components.
@@ -3319,8 +3393,6 @@ class DVConstraints:
 
         self._checkDVGeo(DVGeoName)
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-
         if nPts < 5:
             raise Error("nPts should be at least 5 \n while nPts = %d is given." % nPts)
 
@@ -3329,22 +3401,13 @@ class DVConstraints:
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nPts)
         X = constr_line(s)
-        coords = np.zeros((nPts, 3))
 
         # calculate the distance between coords, it should be uniform for all points
         eps = np.linalg.norm(X[1] - X[0])
 
         # Project all the points
-        for i in range(nPts):
-            # Project actual node:
-            up, _, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
-                raise Error(
-                    "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
-                )
-            coords[i] = up
-            # NOTE: we do not use the down projection
+        coords, _ = self._projectToSurface(surfaceName, X, axis)
+        # NOTE: we do not use the down projection
 
         typeName = "curvCon1D"
         if typeName not in self.constraints:
@@ -3370,6 +3433,7 @@ class DVConstraints:
             addToPyOpt,
             compNames,
         )
+        return self.constraints[typeName][conName]
 
     def addMonotonicConstraints(
         self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childName=None, comp=None, DVGeoName="default"
@@ -3436,6 +3500,7 @@ class DVConstraints:
             DVGeo=DVGeo,
             config=config,
         )
+        return self.linearCon[conName]
 
     def _checkDVGeo(self, name="default"):
         """Check if DVGeo exists"""
@@ -3474,16 +3539,85 @@ class DVConstraints:
             p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
         return p0, p1, p2
 
-    def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):
-        """
-        Internal function to generate the grid points (nSpan x nChord)
-        and to actual perform the intersections. This is in a separate
-        functions since addThicknessConstraints2D, and volume based
-        constraints use the same code. The list of projected
-        coordinates are returned.
+    def _projectToSurface(self, surfaceName, X, direction):
+        """Project points to a surface along given directions.
+
+        Parameters
+        ----------
+        surfaceName : str
+            Name of surface to project to.
+        X : numpy array of shape (..., 3)
+            Point to project from
+        direction : numpy array of shape (..., 3) or (3,)
+            Direction to project along, can either be a single vector or an array of the same shape as X
+
+        Returns
+        -------
+        numpy array of shape (..., 3)
+            "up" projected points
+        numpy array of shape (..., 3)
+            "down" projected points
+
+        Notes
+        -----
+        In the default case, where there is one intersection along the positive direction of projection and one in the
+        negative direction, the "up" points correspond to the intersection in the positive direction of projection and
+        the "down" points correspond to the intersection in the negative direction of projection. However, in cases
+        where both intersections are in the same direction of projection, the "up" point is defined as the intersection
+        furthest along the positive direction of projection. In cases where there are more than two intersections, the
+        two intersections closest to the original point are returned, with the "up" point defined as the intersection
+        furthest along the positive direction of projection.
         """
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        v1 = p1 - p0
+        v2 = p2 - p0
 
+        # To make this function work for X arrays of arbitrary dimension, flatten all but the last dimension
+        Xflat = X.reshape((-1, 3))
+
+        direction = np.array(direction)
+        if direction.shape == X.shape:
+            directionFlat = direction.reshape((-1, 3))
+        elif direction.shape == (3,):
+            directionFlat = np.tile(direction, (Xflat.shape[0], 1))
+        else:
+            raise ValueError("Direction must be either a single vector or an array of the same shape as X")
+
+        numPoints = Xflat.shape[0]
+
+        up = np.zeros_like(Xflat)
+        down = np.zeros_like(Xflat)
+
+        for ii in range(numPoints):
+            x1, x2, fail = geo_utils.projectNode(Xflat[ii], directionFlat[ii], p0, v1, v2)
+            if fail == 0:
+                up[ii] = x1
+                down[ii] = x2
+            elif fail == -1:
+                # More than 2 solutions. In this case projectNode returns the two closest points, choose the one
+                # furthest in the direction of projection first
+                if np.dot(x1 - Xflat[ii], directionFlat[ii]) > np.dot(x2 - Xflat[ii], directionFlat[ii]):
+                    up[ii] = x1
+                    down[ii] = x2
+                else:
+                    up[ii] = x2
+                    down[ii] = x1
+            else:
+                raise Error(
+                    "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
+                    % (
+                        Xflat[ii, 0],
+                        Xflat[ii, 1],
+                        Xflat[ii, 2],
+                        directionFlat[ii, 0],
+                        directionFlat[ii, 1],
+                        directionFlat[ii, 2],
+                    )
+                )
+
+        return up.reshape(X.shape), down.reshape(X.shape)
+
+    def _generateGrid(self, leList, teList, nSpan, nChord):
         # Create mesh of intersections
         le_s = Curve(X=leList, k=2)
         te_s = Curve(X=teList, k=2)
@@ -3534,46 +3668,36 @@ class DVConstraints:
         # Generate chordwise parametric distances
         chord_s = np.linspace(0.0, 1.0, nChord)
 
-        # Get the total number of spanwise sections
-        nSpanTotal = np.sum(nSpan)
-
         # Generate a 2D region of intersections
         X = geo_utils.tfi_2d(le_s(le_span_s), te_s(te_span_s), root_s(chord_s), tip_s(chord_s))
+
+        return X
+
+    def _generateGridIntersections(self, leList, teList, nSpan, nChord, surfaceName):
+        """
+        Internal function to generate the grid points (nSpan x nChord)
+        and to actual perform the intersections. This is in a separate
+        functions since addThicknessConstraints2D, and volume based
+        constraints use the same code. The list of projected
+        coordinates are returned.
+        """
+        X = self._generateGrid(leList, teList, nSpan, nChord)
+        nSpanTotal = X.shape[0]
+
+        # Generate the 'up_vec' from taking the cross product
+        # across a quad
+        uVecs = np.zeros((nSpanTotal, nChord, 3))
+        vVecs = np.zeros((nSpanTotal, nChord, 3))
+        uVecs[0, :, :] = X[1, :, :] - X[0, :, :]
+        uVecs[-1, :, :] = X[-1, :, :] - X[-2, :, :]
+        uVecs[1:-1, :, :] = X[2:, :, :] - X[0:-2, :, :]
+        vVecs[:, 0, :] = X[:, 1, :] - X[:, 0, :]
+        vVecs[:, -1, :] = X[:, -1, :] - X[:, -2, :]
+        vVecs[:, 1:-1, :] = X[:, 2:, :] - X[:, 0:-2, :]
+        upVecs = np.cross(uVecs, vVecs)
+
         coords = np.zeros((nSpanTotal, nChord, 2, 3))
-        for i in range(nSpanTotal):
-            for j in range(nChord):
-                # Generate the 'up_vec' from taking the cross product
-                # across a quad
-                if i == 0:
-                    uVec = X[i + 1, j] - X[i, j]
-                elif i == nSpanTotal - 1:
-                    uVec = X[i, j] - X[i - 1, j]
-                else:
-                    uVec = X[i + 1, j] - X[i - 1, j]
-
-                if j == 0:
-                    vVec = X[i, j + 1] - X[i, j]
-                elif j == nChord - 1:
-                    vVec = X[i, j] - X[i, j - 1]
-                else:
-                    vVec = X[i, j + 1] - X[i, j - 1]
-
-                upVec = np.cross(uVec, vVec)
-                # Project actual node:
-                up, down, fail = geo_utils.projectNode(X[i, j], upVec, p0, p1 - p0, p2 - p0)
-
-                if fail == 0:
-                    coords[i, j, 0] = up
-                    coords[i, j, 1] = down
-                elif fail == -1:
-                    # More than 2 solutions. Returned in sorted distance.
-                    coords[i, j, 0] = down
-                    coords[i, j, 1] = up
-                else:
-                    raise Error(
-                        "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
-                        % (X[i, j, 0], X[i, j, 1], X[i, j, 2], upVec[0], upVec[1], upVec[2])
-                    )
+        coords[:, :, 0], coords[:, :, 1] = self._projectToSurface(surfaceName, X, upVecs)
 
         return coords
 
