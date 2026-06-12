@@ -2042,7 +2042,7 @@ class CompIntersection:
 
         # Set the triangulated mesh seeds to all zeros on these procs
         else:
-            dIdptTriA = np.zeros(self.compA.nodes.shape)
+            dIdptTriA = np.zeros((N,) + self.compA.nodes.shape)
 
         # Allreduce the triangulated mesh seeds
         dIdptTriA = self.comm.allreduce(dIdptTriA)
@@ -2079,7 +2079,7 @@ class CompIntersection:
                 except NameError:
                     dIdptTriB = dIdptTriB_temp
         else:
-            dIdptTriB = np.zeros(self.compB.nodes.shape)
+            dIdptTriB = np.zeros((N,) + self.compB.nodes.shape)
 
         dIdptTriB = self.comm.allreduce(dIdptTriB)
         disp = self.compB.triMeshData["disp"]
