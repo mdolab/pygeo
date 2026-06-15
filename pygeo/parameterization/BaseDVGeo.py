@@ -9,7 +9,7 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 import copy
-from baseclasses.testing import expire_deprecation
+from baseclasses.utils import expire_deprecation
 
 
 class BaseDVGeometry(ABC):
