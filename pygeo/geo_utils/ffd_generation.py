@@ -225,7 +225,7 @@ def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord
     DVCon.setSurface(surf, surfFormat=surfFormat)
 
     # Get the surface intersections; surfCoords has dimensions [nSpanTotal, nChord, 2, 3]
-    surfCoords = DVCon._generateIntersections(leList, teList, nSpan, nChord, surfaceName="default")
+    surfCoords = DVCon._generateGridIntersections(leList, teList, nSpan, nChord, surfaceName="default")
 
     nSpanTotal = np.sum(nSpan)
 

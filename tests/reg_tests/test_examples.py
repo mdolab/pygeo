@@ -58,7 +58,7 @@ class TestExamples(unittest.TestCase):
 
     @parameterized.expand(["iges", "plot3d", "liftingsurface"])
     def test_deform(self, input_type):
-        self.output_file_list = ["wingNew.plt"]
+        self.output_file_list = [f"wingNew-{input_type}.plt"]
         self.common_test("deform_geometry", "runScript.py", args=["--input_type", input_type])
 
     def tearDown(self):
