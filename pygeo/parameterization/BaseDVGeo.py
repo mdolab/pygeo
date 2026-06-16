@@ -9,6 +9,8 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 import copy
+
+# External modules
 from baseclasses.utils import expire_deprecation
 
 
