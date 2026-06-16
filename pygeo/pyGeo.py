@@ -515,6 +515,7 @@ class pyGeo:
             for j in range(len(knotsBot)):
                 if abs(knotsTop[i] - knotsBot[j]) < KNOT_TOL:
                     found = True
+                    break
 
             if not found:
                 # Add to all sections
@@ -527,6 +528,7 @@ class pyGeo:
             for j in range(len(knotsTop)):
                 if abs(knotsBot[i] - knotsTop[j]) < KNOT_TOL:
                     found = True
+                    break
 
             if not found:
                 # Add to all sections
