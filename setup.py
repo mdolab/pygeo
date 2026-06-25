@@ -24,7 +24,14 @@ setup(
     license="Apache License Version 2.0",
     packages=find_packages(include=["pygeo*"]),
     python_requires=">=3.11",
-    install_requires=["numpy>=1.25", "pyspline>=1.1", "scipy>=1.11", "mpi4py>=3.1.5", "mdolab-baseclasses", "packaging"],
+    install_requires=[
+        "numpy>=1.25",
+        "pyspline>=1.1",
+        "scipy>=1.11",
+        "mpi4py>=3.1.5",
+        "mdolab-baseclasses>=1.9",
+        "packaging",
+    ],
     extras_require={
         "testing": ["numpy-stl", "parameterized", "testflo", "psutil"],
         "mphys": ["openmdao>=3.37"],

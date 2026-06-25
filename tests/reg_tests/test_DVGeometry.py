@@ -1484,9 +1484,20 @@ class RegTestPyGeo(unittest.TestCase):
 
                 handler.root_add_val(f"new_coords_{ptName}", new_pts, rtol=1e-10, atol=1e-10)
 
+    def test_getValues_deprecated(self):
+        """getValues() is a deprecated shim for getDesignVars(); it must warn and
+        return the same result. This test self-decommissions at pyGeo v1.20."""
+        DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
+        DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+
+        with self.assertWarns(DeprecationWarning):
+            shimValues = DVGeo.getValues()
+
+        directValues = DVGeo.getDesignVars()
+        self.assertEqual(list(shimValues.keys()), list(directValues.keys()))
+        for key in directValues:
+            np.testing.assert_array_equal(shimValues[key], directValues[key])
+
 
 if __name__ == "__main__":
     unittest.main()
-
-    # import xmlrunner
-    # unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'))

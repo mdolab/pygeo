@@ -17,6 +17,9 @@ import numpy as np
 from scipy.optimize import least_squares
 import scipy.sparse as sp
 
+# External modules
+from baseclasses.utils import expire_deprecation
+
 
 class BaseDVGeometry(ABC):
     """
@@ -73,10 +76,8 @@ class BaseDVGeometry(ABC):
         """
         pass
 
+    @expire_deprecation(package_name="pygeo", removal_version="1.20", new_name="getDesignVars")
     def getValues(self):
-        DeprecationWarning(
-            "getValues() is deprecated and will be removed in pyGeo version 1.18. Use getDesignVars() instead. "
-        )
         return self.getDesignVars()
 
     @abstractmethod
@@ -102,7 +103,7 @@ class BaseDVGeometry(ABC):
         lowerBounds : dict
             Dictionary of design variable lower bounds. The keys are the design variable names and the values are the lower bounds.
         upperBounds : dict
-            Dictionary of design variable upper bounds. The keys are the design variable names and the values are
+            Dictionary of design variable upper bounds. The keys are the design variable names and the values are the upper bounds. If a bound is not set, the value will be None.
         """
         pass
 
