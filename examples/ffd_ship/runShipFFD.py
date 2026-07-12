@@ -1,12 +1,4 @@
-"""
-Embed the IGES hull (``KCS_hull_SVA.igs``) in the FFD box produced
-by ``genShipFFD.py`` and applies *local* shape change
-"""
-
-# External modules
 import numpy as np
-
-# First party modules
 from pygeo import DVGeometry, pyGeo
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot3D
 

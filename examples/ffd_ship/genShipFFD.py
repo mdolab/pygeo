@@ -1,44 +1,5 @@
-"""
-Generate an FFD control box for the KCS container-ship half-hull
-(``KCS_half_hull_SVA.igs``).
-
-The symmetry plane is at y=0, x runs longitudinally (stern -> bow) and z is
-vertical (keel -> deck).
-
-Two constructions are available, selected by ``BODY_FITTED``:
-
-* Body-fitted (default): at every longitudinal station the outer transverse face
-  hugs the hull's local half-beam ``y(x, z)`` and the keel/deck levels follow the
-  hull, so the box tapers naturally toward the bow and stern. This places each
-  control point close to the surface it influences, giving much tighter local
-  shape control. The shape is measured by ray casting: the hull IGES is
-  triangulated and inward ``-y`` rays are cast from outboard, keeping the
-  outermost skin intersection (:func:`pygeo.geo_utils.createFittedHullFFD`).
-
-* Rectangular box: a single axis-aligned volume sized to the hull bounding box
-  plus a margin on every face, with the longitudinal sections cosine-clustered
-  toward the bow and stern.
-
-The ``j=0`` control plane is pinned on the y=0 centerline to preserve
-port/starboard symmetry, and the FFD index convention is i -> longitudinal,
-j -> transverse (y, j=0 on the centerline), k -> vertical (z), matching what
-``runShipFFD.py`` expects.
-
-With ``--mirror_hull`` the half-hull FFD is mirrored about y=0 into
-a full-beam FFD (``KCS_full_ffd.xyz``).
-The transverse control points are rebuilt symmetrically
-from the body-fitted outer face at every station and level.
-Its index convention is j=0 starboard outboard -> j=2*N_TRANSVERSE-2 port
-outboard, with the middle j-plane exactly on the centerline.
-
-Run this once to (re)generate ``KCS_ffd.xyz``.
-"""
-
-# External modules
-import numpy as np
 import argparse
-
-# First party modules
+import numpy as np
 from pygeo import pyGeo
 from pygeo.geo_utils import createFittedHullFFD, write_wing_FFD_file
 
