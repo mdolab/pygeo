@@ -25,7 +25,7 @@ j -> transverse (y, j=0 on the centerline), k -> vertical (z), matching what
 ``runShipFFD.py`` expects.
 
 With ``--mirror_hull`` the half-hull FFD is mirrored about y=0 into
-a full-beam FFD (``KCS_full_ffd.xyz``). 
+a full-beam FFD (``KCS_full_ffd.xyz``).
 The transverse control points are rebuilt symmetrically
 from the body-fitted outer face at every station and level.
 Its index convention is j=0 starboard outboard -> j=2*N_TRANSVERSE-2 port
@@ -130,7 +130,9 @@ def read_ffd(fileName):
     with open(fileName) as f:
         nBlocks = int(f.readline())
         if nBlocks != 1:
-            raise ValueError(f"{fileName} has {nBlocks} blocks; expected a single-block FFD")
+            raise ValueError(
+                f"{fileName} has {nBlocks} blocks; expected a single-block FFD"
+            )
         Ni, Nj, Nk = (int(n) for n in f.readline().split())
         data = np.array(f.read().split(), dtype=float)
     # The writer loops ell -> k -> j -> i, so the flat data reshapes to
@@ -172,7 +174,9 @@ def mirror_ffd(halfFileName, fullFileName):
     # valid because they do not vary across j.
     for dim in (0, 2):
         if not np.allclose(half[:, :, :, dim], half[:, :1, :, dim]):
-            raise ValueError(f"{halfFileName}: x/z vary across the transverse index; cannot mirror")
+            raise ValueError(
+                f"{halfFileName}: x/z vary across the transverse index; cannot mirror"
+            )
 
     full = np.repeat(half[:, :1, :, :], nTransverseFull, axis=1)
     yOuter = half[:, -1, :, 1]  # (Ni, Nk) outer-face half-beam plus margins
@@ -198,7 +202,6 @@ def generate(fileName="KCS_ffd.xyz", mirrorHull=False, fullFileName="KCS_full_ff
         f"Wrote {fileName}: {N_LONGITUDINAL} x {N_TRANSVERSE} x {N_VERTICAL} {kind} FFD control points"
     )
 
-    
     if mirrorHull:
         mirror_ffd(fileName, fullFileName)
         print(
@@ -209,6 +212,11 @@ def generate(fileName="KCS_ffd.xyz", mirrorHull=False, fullFileName="KCS_full_ff
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mirror_hull", help="Mirror the hull geometry", action="store_true", default=False)
+    parser.add_argument(
+        "--mirror_hull",
+        help="Mirror the hull geometry",
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
     generate(mirrorHull=args.mirror_hull)
