@@ -1,6 +1,7 @@
 import numpy as np
-from pygeo import DVGeometry, pyGeo
 from pyspline.utils import closeTecplot, openTecplot, writeTecplot3D
+
+from pygeo import DVGeometry, pyGeo
 
 IGES_FILE = "KCS_half_hull_SVA.igs"
 FFD_FILE = "KCS_ffd.xyz"

@@ -1,6 +1,7 @@
 import argparse
 
 import numpy as np
+
 from pygeo import pyGeo
 from pygeo.geo_utils import createFittedHullFFD, write_wing_FFD_file
 
