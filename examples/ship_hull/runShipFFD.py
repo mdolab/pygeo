@@ -10,7 +10,7 @@ import numpy as np
 from pygeo import DVGeometry, pyGeo
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot3D
 
-IGES_FILE = "KCS_hull_SVA.igs"
+IGES_FILE = "KCS_half_hull_SVA.igs"
 FFD_FILE = "KCS_ffd.xyz"
 
 # Bulge definition. The bow is at high x; the design waterline is near z = 10.8 m.

@@ -1,6 +1,6 @@
 """
 Generate an FFD control box for the KCS container-ship half-hull
-(``KCS_hull_SVA.igs``).
+(``KCS_half_hull_SVA.igs``).
 
 The symmetry plane is at y=0, x runs longitudinally (stern -> bow) and z is
 vertical (keel -> deck).
@@ -19,27 +19,35 @@ Two constructions are available, selected by ``BODY_FITTED``:
   plus a margin on every face, with the longitudinal sections cosine-clustered
   toward the bow and stern.
 
-Either way the ``j=0`` control plane is pinned on the y=0 centreline to preserve
+The ``j=0`` control plane is pinned on the y=0 centerline to preserve
 port/starboard symmetry, and the FFD index convention is i -> longitudinal,
-j -> transverse (y, j=0 on the centreline), k -> vertical (z), matching what
+j -> transverse (y, j=0 on the centerline), k -> vertical (z), matching what
 ``runShipFFD.py`` expects.
+
+With ``--mirror_hull`` the half-hull FFD is mirrored about y=0 into
+a full-beam FFD (``KCS_full_ffd.xyz``). 
+The transverse control points are rebuilt symmetrically
+from the body-fitted outer face at every station and level.
+Its index convention is j=0 starboard outboard -> j=2*N_TRANSVERSE-2 port
+outboard, with the middle j-plane exactly on the centerline.
 
 Run this once to (re)generate ``KCS_ffd.xyz``.
 """
 
 # External modules
 import numpy as np
+import argparse
 
 # First party modules
 from pygeo import pyGeo
 from pygeo.geo_utils import createFittedHullFFD, write_wing_FFD_file
 
-IGES_FILE = "KCS_hull_SVA.igs"
+IGES_FILE = "KCS_half_hull_SVA.igs"
 
 # Switch between the body-fitted FFD (True) and the simple rectangular box (False).
 BODY_FITTED = True
 
-# Number of control points in each FFD direction.
+# Number of control points in each FFD direction per half hull.
 # i -> longitudinal, j -> transverse (y), k -> vertical (z).
 N_LONGITUDINAL = 22
 N_TRANSVERSE = 6
@@ -117,8 +125,69 @@ def generate_box(fileName):
     )
 
 
-def generate(fileName="KCS_ffd.xyz"):
-    """Write the KCS hull FFD box to ``fileName`` in PLOT3D format."""
+def read_ffd(fileName):
+    """Read a single-block ASCII PLOT3D FFD file into an (Ni, Nj, Nk, 3) array."""
+    with open(fileName) as f:
+        nBlocks = int(f.readline())
+        if nBlocks != 1:
+            raise ValueError(f"{fileName} has {nBlocks} blocks; expected a single-block FFD")
+        Ni, Nj, Nk = (int(n) for n in f.readline().split())
+        data = np.array(f.read().split(), dtype=float)
+    # The writer loops ell -> k -> j -> i, so the flat data reshapes to
+    # (3, Nk, Nj, Ni) and transposes back to (Ni, Nj, Nk, 3).
+    return data.reshape(3, Nk, Nj, Ni).transpose(3, 2, 1, 0)
+
+
+def write_ffd(fileName, coords):
+    """Write an (Ni, Nj, Nk, 3) lattice as a single-block ASCII PLOT3D FFD file."""
+    Ni, Nj, Nk, _ = coords.shape
+    with open(fileName, "w") as f:
+        f.write("1\n")
+        f.write(f"{Ni} {Nj} {Nk}\n")
+        for ell in range(3):
+            for kk in range(Nk):
+                for jj in range(Nj):
+                    for ii in range(Ni):
+                        f.write("%.15f " % (coords[ii, jj, kk, ell]))
+                    f.write("\n")
+
+
+def mirror_ffd(halfFileName, fullFileName):
+    """Mirror the half-hull FFD in ``halfFileName`` about y=0 and write the
+    full-beam FFD to ``fullFileName``.
+
+    The half FFD's inboard planes sit at negative y (the j=0 plane is pinned at
+    y=-ABS_MARGINS[1], and interior planes also go negative at slender bow/stern
+    stations), so simply concatenating a reflected copy would tangle the lattice.
+    Instead the transverse control points at every station and level are rebuilt
+    as ``linspace(-yOuter, +yOuter, 2*Nj - 1)`` from that (i, k)'s outer-face y,
+    which preserves the body-fitted outer envelope on both sides and puts the
+    middle j-plane exactly on the centerline.
+    """
+    half = read_ffd(halfFileName)
+    nTransverse = half.shape[1]
+    nTransverseFull = 2 * nTransverse - 1
+
+    # The symmetric rebuild keeps x and z from the half lattice, which is only
+    # valid because they do not vary across j.
+    for dim in (0, 2):
+        if not np.allclose(half[:, :, :, dim], half[:, :1, :, dim]):
+            raise ValueError(f"{halfFileName}: x/z vary across the transverse index; cannot mirror")
+
+    full = np.repeat(half[:, :1, :, :], nTransverseFull, axis=1)
+    yOuter = half[:, -1, :, 1]  # (Ni, Nk) outer-face half-beam plus margins
+    tt = np.linspace(-1.0, 1.0, nTransverseFull)
+    full[:, :, :, 1] = yOuter[:, None, :] * tt[None, :, None]
+
+    write_ffd(fullFileName, full)
+
+
+def generate(fileName="KCS_ffd.xyz", mirrorHull=False, fullFileName="KCS_full_ffd.xyz"):
+    """Write the KCS hull FFD box to ``fileName`` in PLOT3D format.
+
+    With ``mirrorHull=True``, also mirror it about y=0 into a full-beam FFD
+    written to ``fullFileName``.
+    """
     if BODY_FITTED:
         generate_body_fitted(fileName)
         kind = "body-fitted"
@@ -129,6 +198,17 @@ def generate(fileName="KCS_ffd.xyz"):
         f"Wrote {fileName}: {N_LONGITUDINAL} x {N_TRANSVERSE} x {N_VERTICAL} {kind} FFD control points"
     )
 
+    
+    if mirrorHull:
+        mirror_ffd(fileName, fullFileName)
+        print(
+            f"Wrote {fullFileName}: {N_LONGITUDINAL} x {2 * N_TRANSVERSE - 1} x {N_VERTICAL} "
+            f"mirrored full-beam {kind} FFD control points"
+        )
+
 
 if __name__ == "__main__":
-    generate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mirror_hull", help="Mirror the hull geometry", action="store_true", default=False)
+    args = parser.parse_args()
+    generate(mirrorHull=args.mirror_hull)
