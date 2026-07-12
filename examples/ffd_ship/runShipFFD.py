@@ -1,6 +1,6 @@
 import numpy as np
 from pygeo import DVGeometry, pyGeo
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot3D
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot3D
 
 IGES_FILE = "KCS_half_hull_SVA.igs"
 FFD_FILE = "KCS_ffd.xyz"
@@ -29,15 +29,11 @@ def sampleHullPointCloud(geo, nu=NU_SAMPLE, nv=NV_SAMPLE):
     """
     u, v = np.meshgrid(np.linspace(0, 1, nu), np.linspace(0, 1, nv))
     u, v = u.flatten(), v.flatten()
-    allPts = [
-        geo.surfs[ii].getValue(u, v) for ii in range(geo.nSurf)
-    ]  # each (nu*nv, 3)
+    allPts = [geo.surfs[ii].getValue(u, v) for ii in range(geo.nSurf)]  # each (nu*nv, 3)
     return np.vstack(allPts)
 
 
-def writeDeformedHull(
-    DVGeo, fileName, nSurf, nu=NU_SAMPLE, nv=NV_SAMPLE, ptName="hull", iframe=0
-):
+def writeDeformedHull(DVGeo, fileName, nSurf, nu=NU_SAMPLE, nv=NV_SAMPLE, ptName="hull", iframe=0):
     """Deform the embedded hull cloud with the current design variables and write
     it as a structured Tecplot surface (one zone per hull surface).
 
@@ -87,15 +83,11 @@ def main():
     sternFFDs = isAft & isBelowWaterline
 
     # Never move the centerline points, so the symmetry plane stays at y=0.
-    CLFFDs = localIndex[
-        :, 0:4, :
-    ].flatten()  # pinning the first 4 FFD control points because this is a cubic spline
+    CLFFDs = localIndex[:, 0:4, :].flatten()  # pinning the first 4 FFD control points because this is a cubic spline
     bowSelectedFFDs[CLFFDs] = False
     sternFFDs[CLFFDs] = False
 
-    print(
-        f"Bulging {bowSelectedFFDs.sum()} bow control points outboard by {BULGE_OUTBOARD} m"
-    )
+    print(f"Bulging {bowSelectedFFDs.sum()} bow control points outboard by {BULGE_OUTBOARD} m")
 
     # ----------------------- Apply the deformation ------------------------ #
     iframe = 0
@@ -108,7 +100,7 @@ def main():
     print("=" * 30)
     print("Bow deformation")
     print("=" * 30)
-    for ii, bump in enumerate(wave):
+    for _ii, bump in enumerate(wave):
         print(f"bump: {bump}")
         # breakpoint()
         shape[bowSelectedFFDs] += bump
@@ -116,9 +108,7 @@ def main():
 
         # ----------------------- Write the outputs ---------------------------- #
         # Write the FFD-deformed hull as a structured Tecplot surface.
-        writeDeformedHull(
-            DVGeo, f"KCS_pointcloud_{iframe}.dat", geo.nSurf, iframe=iframe
-        )
+        writeDeformedHull(DVGeo, f"KCS_pointcloud_{iframe}.dat", geo.nSurf, iframe=iframe)
 
         # Reset DVs
         shape[bowSelectedFFDs] -= bump
@@ -129,16 +119,14 @@ def main():
     print("=" * 30)
     print("Stern deformation")
     print("=" * 30)
-    for ii, bump in enumerate(wave):
+    for _ii, bump in enumerate(wave):
         print(f"bump: {bump}")
         shape[sternFFDs] += bump
         DVGeo.setDesignVars({"localShape": shape})
 
         # ----------------------- Write the outputs ---------------------------- #
         # Write the FFD-deformed hull as a structured Tecplot surface.
-        writeDeformedHull(
-            DVGeo, f"KCS_pointcloud_{iframe}.dat", geo.nSurf, iframe=iframe
-        )
+        writeDeformedHull(DVGeo, f"KCS_pointcloud_{iframe}.dat", geo.nSurf, iframe=iframe)
 
         # Reset DVs
         shape[sternFFDs] -= bump

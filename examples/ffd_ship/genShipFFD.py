@@ -1,4 +1,5 @@
 import argparse
+
 import numpy as np
 from pygeo import pyGeo
 from pygeo.geo_utils import createFittedHullFFD, write_wing_FFD_file
@@ -91,9 +92,7 @@ def read_ffd(fileName):
     with open(fileName) as f:
         nBlocks = int(f.readline())
         if nBlocks != 1:
-            raise ValueError(
-                f"{fileName} has {nBlocks} blocks; expected a single-block FFD"
-            )
+            raise ValueError(f"{fileName} has {nBlocks} blocks; expected a single-block FFD")
         Ni, Nj, Nk = (int(n) for n in f.readline().split())
         data = np.array(f.read().split(), dtype=float)
     # The writer loops ell -> k -> j -> i, so the flat data reshapes to
@@ -135,9 +134,7 @@ def mirror_ffd(halfFileName, fullFileName):
     # valid because they do not vary across j.
     for dim in (0, 2):
         if not np.allclose(half[:, :, :, dim], half[:, :1, :, dim]):
-            raise ValueError(
-                f"{halfFileName}: x/z vary across the transverse index; cannot mirror"
-            )
+            raise ValueError(f"{halfFileName}: x/z vary across the transverse index; cannot mirror")
 
     full = np.repeat(half[:, :1, :, :], nTransverseFull, axis=1)
     yOuter = half[:, -1, :, 1]  # (Ni, Nk) outer-face half-beam plus margins
