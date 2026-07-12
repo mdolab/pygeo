@@ -156,9 +156,7 @@ def generate(fileName="KCS_ffd.xyz", mirrorHull=False, fullFileName="KCS_full_ff
     else:
         generate_box(fileName)
         kind = "rectangular-box"
-    print(
-        f"Wrote {fileName}: {N_LONGITUDINAL} x {N_TRANSVERSE} x {N_VERTICAL} {kind} FFD control points"
-    )
+    print(f"Wrote {fileName}: {N_LONGITUDINAL} x {N_TRANSVERSE} x {N_VERTICAL} {kind} FFD control points")
 
     if mirrorHull:
         mirror_ffd(fileName, fullFileName)

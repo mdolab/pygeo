@@ -372,9 +372,14 @@ def createFittedHullFFD(
     >>> geo = pyGeo(fileName="hull.igs", initType="iges")
     >>> geo.doConnectivity()
     >>> createFittedHullFFD(
-    ...     geo, "point-vector", "hull_ffd.xyz",
-    ...     nLongitudinal=18, nTransverse=4, nVertical=5,
-    ...     absMargins=[2.0, 0.3, 0.3], relMargins=[0.0, 0.05, 0.02],
+    ...     geo,
+    ...     "point-vector",
+    ...     "hull_ffd.xyz",
+    ...     nLongitudinal=18,
+    ...     nTransverse=4,
+    ...     nVertical=5,
+    ...     absMargins=[2.0, 0.3, 0.3],
+    ...     relMargins=[0.0, 0.05, 0.02],
     ... )
     """
 
@@ -467,7 +472,7 @@ def createFittedHullFFD(
         for kk in range(nVertical):
             yLocal = np.interp(zLevels[kk], zHit, yHit)
             yOuter = yLocal + absMargins[1] + relMargins[1] * yLocal
-            yCtl = np.linspace(0-absMargins[1], yOuter, nTransverse)
+            yCtl = np.linspace(0 - absMargins[1], yOuter, nTransverse)
             for jj in range(nTransverse):
                 FFDCoords[ii, jj, kk] = [xNodes[ii], yCtl[jj], zLevels[kk]]
 
