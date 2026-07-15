@@ -1,7 +1,10 @@
+# Standard Python modules
 import argparse
 
+# External modules
 import numpy as np
 
+# First party modules
 from pygeo import pyGeo
 from pygeo.geo_utils import createFittedHullFFD, write_wing_FFD_file
 

@@ -1,8 +1,11 @@
+# Standard Python modules
 import os
 
+# External modules
 import numpy as np
 from pyspline.utils import closeTecplot, openTecplot, writeTecplot3D
 
+# First party modules
 from pygeo import DVGeometry, pyGeo
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
