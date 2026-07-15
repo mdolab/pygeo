@@ -1,10 +1,13 @@
+import os
+
 import numpy as np
 from pyspline.utils import closeTecplot, openTecplot, writeTecplot3D
 
 from pygeo import DVGeometry, pyGeo
 
-IGES_FILE = "KCS_half_hull_SVA.igs"
-FFD_FILE = "KCS_ffd.xyz"
+baseDir = os.path.dirname(os.path.abspath(__file__))
+IGES_FILE = f"{baseDir}/KCS_half_hull_SVA.igs"
+FFD_FILE = f"{baseDir}/KCS_ffd.xyz"
 
 # Bulge definition. The bow is at high x; the design waterline is near z = 10.8 m.
 # We select forward control points at/below the waterline and push them outboard.
@@ -94,15 +97,11 @@ def main():
     iframe = 0
     shape = DVGeo.getValues()["localShape"].copy()
     DVGeo.setDesignVars({"localShape": shape})
-    nframes = 10
+    nframes = 2
     wave = BULGE_OUTBOARD * np.sin(np.linspace(0, 2 * np.pi, nframes))
 
     # --- Bow deformation ---
-    print("=" * 30)
-    print("Bow deformation")
-    print("=" * 30)
     for _ii, bump in enumerate(wave):
-        print(f"bump: {bump}")
         # breakpoint()
         shape[bowSelectedFFDs] += bump
         DVGeo.setDesignVars({"localShape": shape})
@@ -117,11 +116,7 @@ def main():
         iframe += 1
 
     # --- Stern def ---
-    print("=" * 30)
-    print("Stern deformation")
-    print("=" * 30)
     for _ii, bump in enumerate(wave):
-        print(f"bump: {bump}")
         shape[sternFFDs] += bump
         DVGeo.setDesignVars({"localShape": shape})
 

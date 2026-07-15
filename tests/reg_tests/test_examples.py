@@ -62,13 +62,18 @@ class TestExamples(unittest.TestCase):
         self.common_test("deform_geometry", "runScript.py", args=["--input_type", input_type])
 
     def test_ship_hull(self):
-        self.output_file_list = [
-            "KCS_original.dat",
-            "KCS_deformed.plt",
-            "KCS_deformed.igs",
-            "KCS_ffd_embedded.dat",
-        ]
-        self.common_test("ship_hull", "runShipFFD.py")
+        self.output_file_list = ["KCS_ffd.xyz"]
+        self.common_test("ffd_ship", "genShipFFD.py")
+
+        # runShipFFD.py writes the undeformed hull plus 2 bow and 2 stern
+        # animation frames, each with the deformed hull and the FFD lattice
+        nframes = 4
+        self.output_file_list += (
+            ["KCS_original.dat"]
+            + [f"KCS_pointcloud_{i}.dat" for i in range(nframes)]
+            + [f"KCS_FFD_{i}.dat" for i in range(nframes)]
+        )
+        self.common_test("ffd_ship", "runShipFFD.py")
 
     def tearDown(self):
         try:
