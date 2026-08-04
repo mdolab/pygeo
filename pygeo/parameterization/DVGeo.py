@@ -125,9 +125,10 @@ class DVGeometry(BaseDVGeometry):
         name=None,
         kmax=4,
         volBounds=None,
+        comm=None,
         **kwargs,
     ):
-        super().__init__(fileName=fileName, name=name)
+        super().__init__(fileName=fileName, name=name, comm=comm)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List

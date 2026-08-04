@@ -108,7 +108,7 @@ class DVGeometryESP(DVGeoSketch):
     def __init__(
         self,
         fileName,
-        comm=MPI.COMM_WORLD,
+        comm=None,
         scale=1.0,
         bodies=[],
         projTol=0.01,
@@ -122,11 +122,12 @@ class DVGeometryESP(DVGeoSketch):
     ):
         if not ocsmImported:
             raise ImportError("OCSM and pyOCSM must be installed to use DVGeometryESP.")
-        if comm.rank == 0:
-            print("Initializing DVGeometryESP")
-            t0 = time.time()
 
         super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
+
+        if self.comm.rank == 0:
+            print("Initializing DVGeometryESP")
+            t0 = time.time()
 
         self.maxproc = maxproc
         self.esp = True
@@ -227,10 +228,10 @@ class DVGeometryESP(DVGeoSketch):
                     raise e
 
         if pmtrIndex == 1:
-            if comm.rank == 0:
+            if self.comm.rank == 0:
                 print("DVGeometryESP Warning: no design parameters defined in the CSM file")
 
-        if comm.rank == 0:
+        if self.comm.rank == 0:
             t3 = time.time()
             print("Initialized DVGeometryESP in", (t3 - t0), "seconds.")
 

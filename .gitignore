@@ -12,4 +12,8 @@ doc/_build
 input_files
 .isort.cfg
 *.vscode
-tests/reg_tests/test_MPhysGeo*_out
+tests/reg_tests/reports/
+tests/reg_tests/test_MPhys*
+.serena/
+.claude/
+.antigravitycli/
