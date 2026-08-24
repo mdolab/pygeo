@@ -28,7 +28,7 @@ setup(
         "numpy>=1.25",
         "pyspline>=1.1",
         "scipy>=1.11",
-        "mpi4py>=3.1.5",
+        "mpi4py>=4.0.0",
         "mdolab-baseclasses>=1.9",
         "packaging",
     ],
