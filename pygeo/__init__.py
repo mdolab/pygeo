@@ -1,4 +1,4 @@
-__version__ = "1.17.2"
+__version__ = "1.18.0"
 
 from .pyNetwork import pyNetwork
 from .pyGeo import pyGeo
