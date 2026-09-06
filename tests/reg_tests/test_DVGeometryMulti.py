@@ -538,5 +538,119 @@ class TestDVGeoMultiEdgeCases(unittest.TestCase):
         DVGeo.update(ptSetName)
 
 
+# fillet doesn't require pySurf
+class TestDVGeoMultiFillet(unittest.TestCase):
+    def set_up_fillet(self, cmplx):
+        # Define the communicator
+        comm = MPI.COMM_WORLD
+
+        # test FFDs
+        input_file_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'input_files')
+        compA_FFD = os.path.join(input_file_dir, 'compA.xyz')
+        compB_FFD = os.path.join(input_file_dir, 'compB.xyz')
+
+        # manual definition of surface and curve pointsets
+        compAPtSet = np.array(((-3.0, 0.0, 0.0), (-2.0, 0.0, 0.0)), dtype=float)
+        compBPtSet = np.array(((3.0, 0.0, 0.0), (2.0, 0.0, 0.0)), dtype=float)
+        filletPtSet = np.array(((-2.0, 0.0, 0.0), (0.0, 0.0, 0.0), (2.0, 0.0, 0.0)), dtype=float)
+
+        compACurve = np.array(((-2.0, 0.0, 0.0)), dtype=float)
+        compBCurve = np.array(((2.0, 0.0, 0.0)), dtype=float)
+
+        # create DVGeo objects
+        compADVGeo = DVGeometry(compA_FFD, child=False, isComplex=cmplx)
+        compBDVGeo = DVGeometry(compB_FFD, child=False, isComplex=cmplx)
+        DVGeo = DVGeometryMulti(filletIntersection=True, debug=False, isComplex=cmplx, comm=comm)
+
+        # add components to DVGeo
+        DVGeo.addComponent("compA", DVGeo=compADVGeo)
+        DVGeo.addComponent("compB", DVGeo=compBDVGeo)
+        DVGeo.addComponent("fillet", DVGeo=None)
+
+        # set up DVs
+        compACtlPts = compADVGeo.getLocalIndex(0)
+        compBCtlPts = compBDVGeo.getLocalIndex(0)
+
+        compAShapes = [{compACtlPts[1, 1, 1]: np.array((0, 0, 1))}]
+        compBShapes = [{compBCtlPts[1, 1, 1]: np.array((0, 1, 1))}]
+
+        compADVGeo.addShapeFunctionDV("shapeA", compAShapes, lower=-1, upper=1)
+        compBDVGeo.addShapeFunctionDV("shapeB", compBShapes, lower=-1, upper=1)
+
+        # set up intersection
+        DVGeo.addIntersection("compA", "compB", "fillet")
+        DVGeo.addCurve("compA", curvePtsArray=compACurve)
+        DVGeo.addCurve("compB", curvePtsArray=compBCurve)
+
+        # add pointsets
+        compAPtSetName = "compA_surf_points"
+        compBPtSetName = "compB_surf_points"
+        filletPtSetName = "fillet_surf_points"
+        ptSets = [compAPtSetName, compBPtSetName, filletPtSetName]
+
+        DVGeo.addPointSet(compAPtSet, compAPtSetName, familyName="compA", applyIC=True)
+        DVGeo.addPointSet(compBPtSet, compBPtSetName, familyName="compB", applyIC=True)
+        DVGeo.addPointSet(filletPtSet, filletPtSetName, familyName="fillet", applyIC=True)
+
+        return DVGeo, ptSets
+
+    def apply_DV(self, DVGeo, ptSetNames, val1, val2=None):
+        dvDict = DVGeo.getValues()
+        dvDict.update({"shapeA": val1})
+        if val2 is not None:
+            dvDict.update({"shapeB": val2})
+        DVGeo.setDesignVars(dvDict)
+
+        [DVGeo.update(name) for name in ptSetNames]
+
+    def test_deform(self):
+        # set up non-complex DVGeo
+        DVGeo, ptSetNames = self.set_up_fillet(False)
+        compAPtSet_orig = DVGeo.points[ptSetNames[0]].points
+        compBPtSet_orig = DVGeo.points[ptSetNames[1]].points
+        filletPtSet_orig = DVGeo.points[ptSetNames[2]].points
+
+        # apply deformation to DV
+        self.apply_DV(DVGeo, ptSetNames, 5, 0)
+        compAPtSet_updated = DVGeo.points[ptSetNames[0]].points
+        compBPtSet_updated = DVGeo.points[ptSetNames[1]].points
+        filletPtSet_updated = DVGeo.points[ptSetNames[2]].points
+
+        # component A and fillet should change in z coordinates
+        np.testing.assert_array_less(compAPtSet_orig[:, 2], compAPtSet_updated[:, 2])
+        np.testing.assert_array_less(filletPtSet_orig[:, 2], filletPtSet_updated[:, 2])
+
+        # component B shouldn't move at all
+        np.testing.assert_allclose(compBPtSet_orig, compBPtSet_updated, rtol=1e-8, atol=1e-8)
+
+        # fillet points should overlap with the component "curves"
+        np.testing.assert_allclose(compAPtSet_updated[1], filletPtSet_updated[0], rtol=1e-6, atol=1e-8)
+        np.testing.assert_allclose(compBPtSet_updated[1], filletPtSet_updated[2], rtol=1e-6, atol=1e-8)
+
+    def test_deform_cmplx(self):
+        # set up complex DVGeo
+        DVGeo, ptSetNames = self.set_up_fillet(True)
+        compAPtSet_orig = DVGeo.points[ptSetNames[0]].points
+        compBPtSet_orig = DVGeo.points[ptSetNames[1]].points
+        filletPtSet_orig = DVGeo.points[ptSetNames[2]].points
+
+        # apply deformation to DV
+        self.apply_DV(DVGeo, ptSetNames, 5, 0)
+        compAPtSet_updated = DVGeo.points[ptSetNames[0]].points
+        compBPtSet_updated = DVGeo.points[ptSetNames[1]].points
+        filletPtSet_updated = DVGeo.points[ptSetNames[2]].points
+
+        # component A and fillet should change in z coordinates
+        np.testing.assert_array_less(compAPtSet_orig[:, 2], compAPtSet_updated[:, 2])
+        np.testing.assert_array_less(filletPtSet_orig[:, 2], filletPtSet_updated[:, 2])
+
+        # component B shouldn't move at all
+        np.testing.assert_allclose(compBPtSet_orig, compBPtSet_updated, rtol=1e-8, atol=1e-8)
+
+        # fillet points should overlap with the component "curves"
+        np.testing.assert_allclose(compAPtSet_updated[1], filletPtSet_updated[0], rtol=1e-6, atol=1e-8)
+        np.testing.assert_allclose(compBPtSet_updated[1], filletPtSet_updated[2], rtol=1e-6, atol=1e-8)
+
+
 if __name__ == "__main__":
     unittest.main()
