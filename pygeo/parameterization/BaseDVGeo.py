@@ -10,6 +10,9 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 import copy
 
+# External modules
+from baseclasses.utils import expire_deprecation
+
 
 class BaseDVGeometry(ABC):
     """
@@ -65,16 +68,34 @@ class BaseDVGeometry(ABC):
         """
         pass
 
-    @abstractmethod
+    @expire_deprecation(package_name="pygeo", removal_version="1.20", new_name="getDesignVars")
     def getValues(self):
+        return self.getDesignVars()
+
+    @abstractmethod
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
-        Values are returned in a dictionary format that would be suitable for a subsequent call to setValues()
+        Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars()
 
         Returns
         -------
         dvDict : dict
             Dictionary of design variables
+        """
+        pass
+
+    @abstractmethod
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds. The keys are the design variable names and the values are the lower bounds.
+        upperBounds : dict
+            Dictionary of design variable upper bounds. The keys are the design variable names and the values are the upper bounds. If a bound is not set, the value will be None.
         """
         pass
 
@@ -185,6 +206,17 @@ class BaseDVGeometry(ABC):
         ----------
         ptSetName : str
             Name of point-set to return. This must match ones of the given in an :func:`addPointSet()` call.
+        """
+        pass
+
+    @abstractmethod
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
         """
         pass
 

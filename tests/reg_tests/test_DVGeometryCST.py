@@ -560,7 +560,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
         self.DVGeo.update(self.ptName)
 
-        DVs = self.DVGeo.getValues()
+        DVs = self.DVGeo.getDesignVars()
 
         # First compute the analytic ones with the built in function
         sensProd = []
@@ -595,7 +595,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         # derivatives at each of the coordianates
         dIdXpt = np.ones_like(self.coords)
 
-        DVs = self.DVGeo.getValues()
+        DVs = self.DVGeo.getDesignVars()
 
         # First compute the analytic ones with the built in function
         sens = np.real(self.DVGeo.totalSensitivity(dIdXpt, self.ptName)[self.dvName])
@@ -634,7 +634,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         coeff = np.array([0.1, 0.5, 1.0])
         dIdXptVectorized = np.array([coeff[0] * dIdXpt, coeff[1] * dIdXpt, coeff[2] * dIdXpt])
 
-        DVs = self.DVGeo.getValues()
+        DVs = self.DVGeo.getDesignVars()
 
         # First compute the analytic ones with the built in function
         sens = np.real(self.DVGeo.totalSensitivity(dIdXptVectorized, self.ptName, comm=self.comm)[self.dvName])
@@ -692,7 +692,7 @@ class TestFunctionality(unittest.TestCase):
 
         self.assertEqual(nUpper + nLower + nOther, self.DVGeo.getNDV())
 
-    def test_getValues(self):
+    def test_getDesignVars(self):
         nUpper = 5
         nLower = 3
         self.DVGeo = DVGeometryCST(os.path.join(inputDir, "naca2412.dat"), numCST=[nUpper, nLower])
@@ -718,7 +718,7 @@ class TestFunctionality(unittest.TestCase):
         }
         self.DVGeo.setDesignVars(DVs)
 
-        valDVs = self.DVGeo.getValues()
+        valDVs = self.DVGeo.getDesignVars()
 
         for dvName in DVs.keys():
             np.testing.assert_array_equal(DVs[dvName], valDVs[dvName])

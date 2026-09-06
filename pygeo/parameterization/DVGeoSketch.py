@@ -121,17 +121,17 @@ class DVGeoSketch(BaseDVGeometry):
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet
-        values = u.T @ self.convertDictToSensitivity(self.getValues())
+        values = u.T @ self.convertDictToSensitivity(self.getDesignVars())
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
 
         self.useComposite = True
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
+        that would be suitable for a subsequent call to setDesignVars()
 
         Returns
         -------
@@ -146,6 +146,29 @@ class DVGeoSketch(BaseDVGeometry):
             dvDict = self.mapXDictToComp(dvDict)
 
         return dvDict
+
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = OrderedDict()
+        upperBounds = OrderedDict()
+        for dvName in self.DVs:
+            lowerBounds[dvName] = self.DVs[dvName].lower.real if self.DVs[dvName].lower is not None else None
+            upperBounds[dvName] = self.DVs[dvName].upper.real if self.DVs[dvName].upper is not None else None
+
+        if self.useComposite:
+            lowerBounds = self.mapXDictToComp(lowerBounds)
+            upperBounds = self.mapXDictToComp(upperBounds)
+
+        return lowerBounds, upperBounds
 
     def getVarNames(self, pyOptSparse=False):
         """

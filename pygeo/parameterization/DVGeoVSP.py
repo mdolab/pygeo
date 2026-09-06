@@ -405,6 +405,16 @@ class DVGeometryVSP(DVGeoSketch):
 
         return newPts
 
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        return self.pointSets[ptSetName].points
+
     def writeVSPFile(self, fileName, exportSet=0):
         """
         Take the current design and write a new VSP file

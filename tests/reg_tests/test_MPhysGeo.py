@@ -266,6 +266,8 @@ test_params_constraints_box = [
 @unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
 @parameterized_class(ffd_test_params)
 class TestDVGeoMPhysFFD(unittest.TestCase):
+    N_PROCS = 2
+
     def setUp(self):
         # give the OM Group access to the test case attributes
         dvInfo = self.dvInfo
@@ -286,7 +288,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
                 points[0, :] = [0.25, 0, 0]
                 points[1, :] = [-0.25, 0, 0]
                 ptName = "testPoints"
-                self.geometry.nom_addPointSet(points.flatten(), ptName)
+                self.geometry.nom_addPointSet(points.flatten(), ptName, distributed=False)
 
                 # create a reference axis for the parent
                 axisPoints = [[-1.0, 0.0, 0.0], [1.5, 0.0, 0.0]]
@@ -323,7 +325,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
 
                 self.add_constraint(f"geometry.{ptName}")
 
-        self.prob = Problem(model=FFDGroup())
+        self.prob = Problem(model=FFDGroup(), reports=False)
 
     def test_run_model(self):
         self.prob.setup()
@@ -404,7 +406,7 @@ class TestDVConMPhysBox(unittest.TestCase):
                 self.add_design_var("local")
                 self.add_objective(paramKwargs["name"])
 
-        p = Problem(model=BoxGeo())
+        p = Problem(model=BoxGeo(), reports=False)
         return p
 
     def test_undeformed_vals(self):
@@ -529,7 +531,7 @@ class TestDVGeoMPhysESP(unittest.TestCase):
 
                 self.add_constraint(f"geometry.{ptName}")
 
-        self.prob = Problem(model=ESPGroup())
+        self.prob = Problem(model=ESPGroup(), reports=False)
 
     def test_run_model(self):
         self.prob.setup()
@@ -560,6 +562,21 @@ class TestDVGeoMPhysESP(unittest.TestCase):
 
         totals = self.prob.check_totals(step=1e-5, out_stream=None)
         commonUtils.assert_check_totals(totals, atol=1e-5, rtol=1e-5)
+
+
+@unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
+class TestGetDVGeoError(unittest.TestCase):
+    # Make sure we get an error if we try to call nom_getDVGeo before setup
+    def test_getDVGeo_error(self):
+        class BadGroup(Group):
+            def setup(self):
+                geometryComp = OM_DVGEOCOMP(file=outerFFD, type="ffd")
+                self.add_subsystem("geometry", geometryComp, promotes=["*"])
+                geometryComp.nom_getDVGeo()
+
+        prob = Problem(model=BadGroup(), reports=False)
+        with self.assertRaises(RuntimeError):
+            prob.setup()
 
 
 if __name__ == "__main__":

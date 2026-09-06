@@ -76,7 +76,7 @@ class RegTestPyGeoVSPParallel(unittest.TestCase):
             DVGeo.addVariable("Ellipsoid", "Design", "C_Radius", lower=0.5, upper=3.0, scale=1.0, dh=dh)
 
             # dictionary of design variables
-            x = DVGeo.getValues()
+            x = DVGeo.getDesignVars()
             nDV = len(x)
             dvList = list(x.keys())
 
@@ -275,7 +275,7 @@ class RegTestPyGeoVSPSerial(unittest.TestCase):
             funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
 
             # now perturb the design with finite differences and compute FD gradients
-            DVs = DVGeo.getValues()
+            DVs = DVGeo.getDesignVars()
 
             funcSensFD = {}
 

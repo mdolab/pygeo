@@ -862,7 +862,7 @@ class DVGeometryMulti:
         for pointSet in self.updated:
             self.updated[pointSet] = False
 
-    def getValues(self):
+    def getDesignVars(self):
         """
         Generic routine to return the current set of design variables.
         Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars().
@@ -884,6 +884,27 @@ class DVGeometryMulti:
                     dvDict[k] = v
 
         return dvDict
+
+    def getDVBounds(self):
+        """
+        Return the bounds on the design variables.
+
+        Returns
+        -------
+        lowerBounds : dict
+            Dictionary of design variable lower bounds
+        upperBounds : dict
+            Dictionary of design variable upper bounds
+        """
+        lowerBounds = {}
+        upperBounds = {}
+        # we need to loop over each DVGeo object and get the DVs
+        for comp in self.compNames:
+            lowerBoundsComp, upperBoundsComp = self.comps[comp].DVGeo.getDVBounds()
+            lowerBounds.update(lowerBoundsComp)
+            upperBounds.update(upperBoundsComp)
+
+        return lowerBounds, upperBounds
 
     def update(self, ptSetName, config=None):
         """
@@ -945,6 +966,16 @@ class DVGeometryMulti:
         self.points[ptSetName].points = newPts
 
         return newPts
+
+    def getOrigPoints(self, ptSetName):
+        """Get the original coordinates for a point set. a.k.a the coordinates that were passed to :func:`addPointSet`.
+
+        Parameters
+        ----------
+        ptSetName : str
+            Name of the point set to return the original coordinates for.
+        """
+        return self.points[ptSetName].points
 
     def pointSetUpToDate(self, ptSetName):
         """
@@ -2828,7 +2859,7 @@ class CompIntersection(Intersection):
 
         # Set the triangulated mesh seeds to all zeros on these procs
         else:
-            dIdptTriA = np.zeros(self.compA.nodes.shape)
+            dIdptTriA = np.zeros((N,) + self.compA.nodes.shape)
 
         # Allreduce the triangulated mesh seeds
         dIdptTriA = self.comm.allreduce(dIdptTriA)
@@ -2865,7 +2896,7 @@ class CompIntersection(Intersection):
                 except NameError:
                     dIdptTriB = dIdptTriB_temp
         else:
-            dIdptTriB = np.zeros(self.compB.nodes.shape)
+            dIdptTriB = np.zeros((N,) + self.compB.nodes.shape)
 
         dIdptTriB = self.comm.allreduce(dIdptTriB)
         disp = self.compB.triMeshData["disp"]

@@ -60,7 +60,7 @@ def deform_liftingsurface():
     # rst LiftingSurface (end)
 
     # Deform Geometry Object and Output
-    deform_DVGeo(geo)
+    deform_DVGeo(geo, name="wingNew-liftingsurface")
 
 
 def deform_iges():
@@ -74,7 +74,7 @@ def deform_iges():
     # rst IGES (end)
 
     # Deform Geometry Object and Output
-    deform_DVGeo(geo)
+    deform_DVGeo(geo, name="wingNew-iges")
 
 
 def deform_plot3d():
@@ -89,10 +89,10 @@ def deform_plot3d():
     # rst plot3d (end)
 
     # Deform Geometry Object and Output
-    deform_DVGeo(geo)
+    deform_DVGeo(geo, name="wingNew-plot3d")
 
 
-def deform_DVGeo(geo):
+def deform_DVGeo(geo, name=None) -> None:
     # =========================================================================
     # Setup DVGeometry object
     # =========================================================================
@@ -111,7 +111,7 @@ def deform_DVGeo(geo):
     DVGeo.addGlobalDV(dvName="twist", value=[0] * nRefAxPts, func=twist, lower=-10, upper=10, scale=1.0)
 
     # Get Design Variables
-    dvDict = DVGeo.getValues()
+    dvDict = DVGeo.getDesignVars()
 
     # Set First Twist Section to 5deg
     dvDict["twist"][0] = 5
@@ -124,7 +124,9 @@ def deform_DVGeo(geo):
     # Update pyGeo Object and output result
     # =========================================================================
     # rst UpdatePyGeo
-    DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
+    if name is None:
+        name = "wingNew"
+    DVGeo.updatePyGeo(geo, "tecplot", name, nRefU=10, nRefV=10)
     # rst UpdatePyGeo (end)
 
 

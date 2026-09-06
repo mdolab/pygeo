@@ -549,7 +549,7 @@ class SurfaceTopology(Topology):
         elif coords is not None:
             self.nFace = len(coords)
             self.nEnt = self.nFace
-            # We can use the pointReduce algorithim on the nodes
+            # We can use the pointReduce algorithm on the nodes
             nodeList, nodeLink = pointReduce(coords[:, 0:4, :].reshape((self.nFace * 4, 3)), nodeTol)
             nodeLink = nodeLink.reshape((self.nFace, 4))
 

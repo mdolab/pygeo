@@ -34,7 +34,7 @@ DVGeo, stlmesh = create_fresh_dvgeo()
 DVGeo.addLocalDV("shape", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
 # Perturb some local variables and observe the effect on the surface
-dvdict = DVGeo.getValues()
+dvdict = DVGeo.getDesignVars()
 dvdict["shape"][DVGeo.getLocalIndex(0)[:, 1, 5]] += 0.15
 dvdict["shape"][DVGeo.getLocalIndex(0)[3, 1, 1]] += 0.15
 DVGeo.setDesignVars(dvdict)
@@ -104,7 +104,7 @@ for kk in [-1, 0, 1]:
 shapes = [shape_1, shape_2]
 DVGeo.addShapeFunctionDV("shape_func", shapes)
 
-dvdict = DVGeo.getValues()
+dvdict = DVGeo.getDesignVars()
 dvdict["shape_func"] = np.array([0.3, 0.2])
 DVGeo.setDesignVars(dvdict)
 
@@ -176,7 +176,7 @@ DVGeo.addGlobalDV("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
 
 # rst set DV
 # set a twist distribution from -10 to +20 degrees along the span
-dvdict = DVGeo.getValues()
+dvdict = DVGeo.getDesignVars()
 dvdict["twist"] = np.linspace(-10.0, 20.0, nrefaxpts)
 DVGeo.setDesignVars(dvdict)
 # write out the twisted wing and FFD
@@ -188,7 +188,7 @@ DVGeo.writeTecplot("twist_ffd.dat")
 
 # rst set DV 2
 # now add some sweep and change the twist a bit
-dvdict = DVGeo.getValues()
+dvdict = DVGeo.getDesignVars()
 dvdict["sweep"] = 30.0
 dvdict["twist"] = np.linspace(0.0, 20.0, nrefaxpts)
 DVGeo.setDesignVars(dvdict)
@@ -222,7 +222,7 @@ DVGeo.addGlobalDV("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
 DVGeo.addLocalDV("thickness", axis="y", lower=-0.5, upper=0.5)
 
 # change everything and the kitchen sink
-dvdict = DVGeo.getValues()
+dvdict = DVGeo.getDesignVars()
 dvdict["twist"] = np.linspace(0.0, 20.0, nrefaxpts)
 # scale_x should be set to 1 at baseline, unlike the others which perturb about 0
 # the following will produce a longer wing root and shorter wing tip

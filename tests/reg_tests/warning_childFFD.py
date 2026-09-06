@@ -83,7 +83,7 @@ class RegTestPyGeo(unittest.TestCase):
         ang_r = np.deg2rad(ang)
 
         # Modify design variables
-        x = big.getValues()
+        x = big.getDesignVars()
 
         # add a local shape change
         x["local_z_big"] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5])

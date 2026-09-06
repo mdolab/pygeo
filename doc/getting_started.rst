@@ -141,7 +141,7 @@ You can now hopefully appreciate the physical analogy of the control points as p
 
 The code snippet below illustrates a few key methods of the public API.
 
-* :meth:`getValues <.DVGeometry.getValues>` returns the current design variable values as a dictionary where the keys are the DV names.
+* :meth:`getDesignVars <.DVGeometry.getDesignVars>` returns the current design variable values as a dictionary where the keys are the DV names.
 * :meth:`setDesignVars <.DVGeometry.setDesignVars>` sets the design variables to new values using an input dictionary.
 * :meth:`update <.DVGeometry.update>` recalculates the pointset locations given potentially updated design variable values.
 
