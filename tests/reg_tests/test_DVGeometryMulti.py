@@ -545,9 +545,9 @@ class TestDVGeoMultiFillet(unittest.TestCase):
         comm = MPI.COMM_WORLD
 
         # test FFDs
-        input_file_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'input_files')
-        compA_FFD = os.path.join(input_file_dir, 'compA.xyz')
-        compB_FFD = os.path.join(input_file_dir, 'compB.xyz')
+        input_file_dir = os.path.join(os.path.dirname(__file__), "..", "..", "input_files")
+        compA_FFD = os.path.join(input_file_dir, "compA.xyz")
+        compB_FFD = os.path.join(input_file_dir, "compB.xyz")
 
         # manual definition of surface and curve pointsets
         compAPtSet = np.array(((-3.0, 0.0, 0.0), (-2.0, 0.0, 0.0)), dtype=float)
