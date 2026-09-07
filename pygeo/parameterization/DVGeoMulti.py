@@ -1120,7 +1120,7 @@ class DVGeometryMulti:
                 # we pass in dIdpt and the intersection object, along with pointset information the intersection
                 # object adjusts the entries corresponding to projected points and passes back dIdpt in place.
                 # if this is a component that surrounds a fillet, we don't get warping derivatives
-                if ptSetComp.isFillet or not self.filletIntersection:
+                if not self.filletIntersection or ptSetComp.isFillet:
                     compSens = IC.project_b(ptSetName, dIdpt, comm, ptSetComp)
 
                     # append this to the dictionary list
@@ -1148,8 +1148,8 @@ class DVGeometryMulti:
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
         # fillet pointset has no jacobian from FFD motion
-        if ptSetComp is not None:
-            if ptSetComp.isFillet:
+        if not self.filletIntersection or ptSetComp is not None:
+            if self.filletIntersection and ptSetComp.isFillet:
                 pass
 
             # jacobian for the pointset
@@ -1806,7 +1806,12 @@ class Intersection:
             disp = np.array([np.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
 
             # sendbuf
-            ptsLocal = pts.flatten()
+            # this worked with the fillet intersection but might need revisited
+            if isinstance(self, FilletIntersection):
+                ptsLocal = pts.flatten()
+            # this is the previous DVGeoMulti behavior
+            else:
+                ptsLocal = pts[indices].flatten()
             sendbuf = [ptsLocal, len(indices) * 3]
 
             # recvbuf
@@ -2061,13 +2066,7 @@ class CompIntersection(Intersection):
                 elemIDs + 1
             )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
             self.curveSearchAPI.mindistancecurve(
-                pts.T,
-                self.nodes0.T,
-                self.conn0.T + 1,
-                xyzProj.T,
-                tanProj.T,
-                dist2,
-                elemIDs,
+                pts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
             )
 
             # Adjust indices back to Python standards
@@ -2614,10 +2613,7 @@ class CompIntersection(Intersection):
 
             if self.debug:
                 tecplot_interface.write_tecplot_scatter(
-                    f"{curveName}_warped_pts.plt",
-                    "intersection",
-                    ["X", "Y", "Z"],
-                    ptsOnCurve,
+                    f"{curveName}_warped_pts.plt", "intersection", ["X", "Y", "Z"], ptsOnCurve
                 )
 
             # conn of the current curve
@@ -2647,13 +2643,7 @@ class CompIntersection(Intersection):
                     elemIDs + 1
                 )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
                 curveMask = self.curveSearchAPI.mindistancecurve(
-                    ptsOnCurve.T,
-                    self.seam.T,
-                    curveConn.T + 1,
-                    xyzProj.T,
-                    tanProj.T,
-                    dist2,
-                    elemIDs,
+                    ptsOnCurve.T, self.seam.T, curveConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                 )
 
                 # Adjust indices back to Python standards
@@ -2675,10 +2665,7 @@ class CompIntersection(Intersection):
 
             if self.debug:
                 tecplot_interface.write_tecplot_scatter(
-                    f"{curveName}_projected_pts.plt",
-                    curveName,
-                    ["X", "Y", "Z"],
-                    xyzProj,
+                    f"{curveName}_projected_pts.plt", curveName, ["X", "Y", "Z"], xyzProj
                 )
 
             # update the point coordinates on this processor.
@@ -2745,22 +2732,10 @@ class CompIntersection(Intersection):
         # using the deltas from the previous project to curve step
 
         if flagA:
-            self._warpSurfPts(
-                self.points[ptSetName][0],
-                newPts,
-                self.surfIdxA[ptSetName],
-                curvePtCoordsA,
-                deltaA,
-            )
+            self._warpSurfPts(self.points[ptSetName][0], newPts, self.surfIdxA[ptSetName], curvePtCoordsA, deltaA)
 
         if flagB:
-            self._warpSurfPts(
-                self.points[ptSetName][0],
-                newPts,
-                self.surfIdxB[ptSetName],
-                curvePtCoordsB,
-                deltaB,
-            )
+            self._warpSurfPts(self.points[ptSetName][0], newPts, self.surfIdxB[ptSetName], curvePtCoordsB, deltaB)
 
         # save some info for the sens. computations
         self.curveProjData[ptSetName]["curvePtCoordsA"] = curvePtCoordsA
@@ -2808,7 +2783,7 @@ class CompIntersection(Intersection):
                 ptsB = newPts[indBComp]
                 newPts[indBComp] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
 
-    def project_b(self, ptSetName, dIdpt, comm):
+    def project_b(self, ptSetName, dIdpt, comm, comp=None):
         # call the functions to propagate ad seeds bwd
         # we need to build ADTs for both components if we have any components that lie on either
         # we also need to save ALL intermediate variables for gradient computations in reverse mode
@@ -2946,10 +2921,7 @@ class CompIntersection(Intersection):
         # deltaA_b is the seed for the points projected to curves
         if flagA:
             deltaA_b_local = self._warpSurfPts_b(
-                dIdpt,
-                self.points[ptSetName][0],
-                self.surfIdxA[ptSetName],
-                curvePtCoordsA,
+                dIdpt, self.points[ptSetName][0], self.surfIdxA[ptSetName], curvePtCoordsA
             )
         else:
             deltaA_b_local = np.zeros((N, nCurvePtCoordsAG, 3))
@@ -2957,10 +2929,7 @@ class CompIntersection(Intersection):
         # do the same for comp B
         if flagB:
             deltaB_b_local = self._warpSurfPts_b(
-                dIdpt,
-                self.points[ptSetName][0],
-                self.surfIdxB[ptSetName],
-                curvePtCoordsB,
+                dIdpt, self.points[ptSetName][0], self.surfIdxB[ptSetName], curvePtCoordsB
             )
         else:
             deltaB_b_local = np.zeros((N, nCurvePtCoordsBG, 3))
@@ -3100,13 +3069,7 @@ class CompIntersection(Intersection):
 
         # Create new tree (the tree itself is stored in Fortran level)
         self.adtAPI.adtbuildsurfaceadt(
-            comp.nodes.T,
-            triConn.T,
-            quadConn.T,
-            BBox.T,
-            useBBox,
-            MPI.COMM_SELF.py2f(),
-            adtID,
+            comp.nodes.T, triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), adtID
         )
 
         # project
@@ -3177,13 +3140,7 @@ class CompIntersection(Intersection):
 
         # Create new tree (the tree itself is stored in Fortran level)
         self.adtAPI.adtbuildsurfaceadt(
-            comp.nodes.T,
-            triConn.T,
-            quadConn.T,
-            BBox.T,
-            useBBox,
-            MPI.COMM_SELF.py2f(),
-            adtID,
+            comp.nodes.T, triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), adtID
         )
 
         # also extract the projection data we have from the fwd pass
@@ -3396,13 +3353,7 @@ class CompIntersection(Intersection):
                         elemIDs + 1
                     )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
                     curveMask = self.curveSearchAPI.mindistancecurve(
-                        intNodesOrd.T,
-                        self.compB.nodes.T,
-                        curveConn.T + 1,
-                        xyzProj.T,
-                        tanProj.T,
-                        dist2,
-                        elemIDs,
+                        intNodesOrd.T, self.compB.nodes.T, curveConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                     )
 
                     # Adjust indices back to Python standards
@@ -3496,13 +3447,7 @@ class CompIntersection(Intersection):
             # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
             # Call Fortran code. Remember to adjust transposes and indices
             newCoor, newBarsConn = self.utilitiesAPI.remesh(
-                nNewNodes,
-                coor.T,
-                barsConn.T + 1,
-                method,
-                spacing,
-                initialSpacing,
-                finalSpacing,
+                nNewNodes, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
             )
             newCoor = newCoor.T
             newBarsConn = newBarsConn.T - 1
@@ -3616,13 +3561,7 @@ class CompIntersection(Intersection):
                                 elemIDs + 1
                             )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
                             curveMask = self.curveSearchAPI.mindistancecurve(
-                                curvePts.T,
-                                self.nodes0.T,
-                                self.conn0.T + 1,
-                                xyzProj.T,
-                                tanProj.T,
-                                dist2,
-                                elemIDs,
+                                curvePts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                             )
 
                         dNodes = np.sqrt(dist2)
@@ -3664,13 +3603,7 @@ class CompIntersection(Intersection):
                 # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
                 newCoor, newBarsConn = self.utilitiesAPI.remesh(
-                    nNewNodes,
-                    coor.T,
-                    barsConn.T + 1,
-                    method,
-                    spacing,
-                    initialSpacing,
-                    finalSpacing,
+                    nNewNodes, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
                 )
                 newCoor = newCoor.T
                 newBarsConn = newBarsConn.T - 1
@@ -3706,13 +3639,7 @@ class CompIntersection(Intersection):
                     # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                     # Call Fortran code. Remember to adjust transposes and indices
                     newCoor, newBarsConn = self.utilitiesAPI.remesh(
-                        nNewNodesReverse,
-                        coor.T,
-                        barsConn.T + 1,
-                        method,
-                        spacing,
-                        initialSpacing,
-                        finalSpacing,
+                        nNewNodesReverse, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
                     )
                     newCoor = newCoor.T
                     newBarsConn = newBarsConn.T - 1
@@ -3979,14 +3906,7 @@ class CompIntersection(Intersection):
                 # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
                 newCoor, newBarsConn, cb = self.utilitiesAPI.remesh_b(
-                    nNewElems,
-                    coor.T,
-                    newCoorb.T,
-                    barsConn.T + 1,
-                    method,
-                    spacing,
-                    initialSpacing,
-                    finalSpacing,
+                    nNewElems, coor.T, newCoorb.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
                 )
                 intNodesb[ii] += cb.T
 
@@ -4080,10 +4000,7 @@ class CompIntersection(Intersection):
         if self.debug:
             data = [np.append(points[i], surfaceDist[i]) for i in surfaceIndMap]
             tecplot_interface.write_tecplot_scatter(
-                f"{surface}_points_{self.comm.rank}.plt",
-                f"{surface}",
-                ["X", "Y", "Z", "dist"],
-                data,
+                f"{surface}_points_{self.comm.rank}.plt", f"{surface}", ["X", "Y", "Z", "dist"], data
             )
 
         # Save the indices only if there is at least one point
