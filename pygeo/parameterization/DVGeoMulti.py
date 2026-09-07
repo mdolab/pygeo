@@ -55,7 +55,9 @@ class DVGeometryMulti:
     def __init__(self, comm=MPI.COMM_WORLD, filletIntersection=False, checkDVs=True, debug=False, isComplex=False):
         # Check to make sure pySurf is installed before initializing
         if not pysurfInstalled and not filletIntersection:
-            raise ImportError("pySurf is not installed and is required to use DVGeometryMulti outside of fillet mode.")
+            raise ImportError(
+                "pySurf is not installed and is required to use DVGeometryMulti for non-fillet intersections."
+            )
 
         self.compNames = []
         self.comps = OrderedDict()
