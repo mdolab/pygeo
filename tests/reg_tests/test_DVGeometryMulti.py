@@ -1,7 +1,7 @@
 # Standard Python modules
+from copy import deepcopy
 import os
 import unittest
-from copy import deepcopy
 
 # External modules
 from baseclasses import BaseRegTest
