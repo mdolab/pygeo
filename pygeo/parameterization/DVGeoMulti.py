@@ -143,29 +143,6 @@ class DVGeometryMulti:
         if pointSetKwargs is None:
             pointSetKwargs = {}
 
-        # fillets don't have a DVGeo to get a bounding box from and don't need it
-        if isFillet:
-            xMin = xMax = 3 * [0]
-
-        # standard components need a bounding box to associate points with each FFD
-        else:
-            # we will need the bounding box information later on, so save this here
-            xMin, xMax = DVGeo.FFD.getBounds()
-
-            # also we might want to modify the bounding box if the user specified any coordinates
-            if "xmin" in bbox:
-                xMin[0] = bbox["xmin"]
-            if "ymin" in bbox:
-                xMin[1] = bbox["ymin"]
-            if "zmin" in bbox:
-                xMin[2] = bbox["zmin"]
-            if "xmax" in bbox:
-                xMax[0] = bbox["xmax"]
-            if "ymax" in bbox:
-                xMax[1] = bbox["ymax"]
-            if "zmax" in bbox:
-                xMax[2] = bbox["zmax"]
-
         if triMesh is not None:
             # We also need to read the triMesh and save the points
             nodes, triConn, triConnStack, barsConn = self._readCGNSFile(triMesh)
@@ -205,6 +182,29 @@ class DVGeometryMulti:
             barsConn = None
             triMeshData = None
 
+        # fillets don't have a DVGeo to get a bounding box from and don't need it
+        if isFillet:
+            xMin = xMax = 3 * [0]
+
+        # standard components need a bounding box to associate points with each FFD
+        else:
+            # we will need the bounding box information later on, so save this here
+            xMin, xMax = DVGeo.FFD.getBounds()
+
+            # also we might want to modify the bounding box if the user specified any coordinates
+            if "xmin" in bbox:
+                xMin[0] = bbox["xmin"]
+            if "ymin" in bbox:
+                xMin[1] = bbox["ymin"]
+            if "zmin" in bbox:
+                xMin[2] = bbox["zmin"]
+            if "xmax" in bbox:
+                xMax[0] = bbox["xmax"]
+            if "ymax" in bbox:
+                xMax[1] = bbox["ymax"]
+            if "zmax" in bbox:
+                xMax[2] = bbox["zmax"]
+
         # we have a fillet so no structured surfaces are necessary
         if self.filletIntersection:
             if points is not None:
@@ -230,32 +230,16 @@ class DVGeometryMulti:
 
             # initialize the component object
             # a different class is used for fillets & their adjacent components
-            component = Comp(comp, isFillet, nodes, DVGeo, xMin, xMax, self.comm)
+            new_comp = Comp(comp, isFillet, nodes, DVGeo, xMin, xMax, self.comm)
 
         # we have a standard intersection group which has structured surfaces
         else:
-            if triMesh is not None:
-                # We also need to read the triMesh and save the points
-                nodes, triConn, triConnStack, barsConn = self._readCGNSFile(triMesh)
-
-                # scale the nodes
-                nodes *= scale
-
-                # add these points to the corresponding dvgeo
-                DVGeo.addPointSet(nodes, "triMesh", **pointSetKwargs)
-            else:
-                # the user has not provided a triangulated surface mesh for this file
-                nodes = None
-                triConn = None
-                triConnStack = None
-                barsConn = None
-
             # initialize the component object
-            component = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData)
+            new_comp = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData)
 
         # add component object to the dictionary and list keeping track of components
         # if this component is a fillet (no DVGeo) put in a separate list to avoid unnecessary checks for a DVGeo later
-        self.comps[comp] = component
+        self.comps[comp] = new_comp
         self.compNames.append(comp)
 
         # also save the DVGeometry pointer in the dictionary we pass back (fillet entry will be None)
@@ -923,20 +907,27 @@ class DVGeometryMulti:
 
         # we first need to update all points with their respective DVGeo objects
         for compName, comp in self.comps.items():
-            if comp.DVGeo is not None:
-                if ptSetName in comp.DVGeo.ptSetNames:  # TODO make this work with old Multi
-                    ptsComp = comp.DVGeo.update(ptSetName)
+            if self.filletIntersection:
+                if comp.DVGeo is not None:
+                    if ptSetName in comp.DVGeo.ptSetNames:
+                        ptsComp = comp.DVGeo.update(ptSetName)
 
-                    # now save this info with the pointset mapping
-                    if not self.filletIntersection:
-                        ptMap = self.points[ptSetName].compMap[compName]
-                        newPts[ptMap] = ptsComp
-                    else:
+                        # now save this info with the pointset mapping
                         newPts = ptsComp
+            else:
+                ptsComp = self.comps[compName].DVGeo.update(ptSetName)
 
-        comp = self.comps[self.points[ptSetName].comp]
-        if comp.isFillet:
-            newPts = comp.surfPts
+                # now save this info with the pointset mapping
+                ptMap = self.points[ptSetName].compMap[compName]
+                newPts[ptMap] = ptsComp
+
+        # find out which component this pointset is associated with
+        if self.filletIntersection:
+            comp = self.comps[self.points[ptSetName].comp]
+            if comp.isFillet:
+                newPts = comp.surfPts
+        else:
+            comp = None
 
         # get the delta
         delta = newPts - self.points[ptSetName].points
@@ -959,11 +950,12 @@ class DVGeometryMulti:
         # set the pointset up to date
         self.updated[ptSetName] = True
 
-        # apply coord transformation on newPts
-        if ptSetName in self.coordXfer:
-            newPts = self.coordXfer[ptSetName](newPts, mode="fwd", applyDisplacement=True)
+        if self.filletIntersection:
+            # apply coord transformation on newPts
+            if ptSetName in self.coordXfer:
+                newPts = self.coordXfer[ptSetName](newPts, mode="fwd", applyDisplacement=True)
 
-        self.points[ptSetName].points = newPts
+            self.points[ptSetName].points = newPts
 
         return newPts
 
@@ -1091,8 +1083,12 @@ class DVGeometryMulti:
         """
 
         # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
-        ptSetComp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
-        if ptSetComp is None or not ptSetComp.isFillet:
+        if self.filletIntersection:
+            ptSetComp = self.comps[self.points[ptSetName].comp]
+            if ptSetComp is None or not ptSetComp.isFillet:
+                self._computeTotalJacobian(ptSetName)
+        else:
+            ptSetComp = None
             self._computeTotalJacobian(ptSetName)
 
         # Make dIdpt at least 3D
@@ -1152,24 +1148,25 @@ class DVGeometryMulti:
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
         # fillet pointset has no jacobian from FFD motion
-        if ptSetComp.isFillet:
-            pass
+        if ptSetComp is not None:
+            if ptSetComp.isFillet:
+                pass
 
-        # jacobian for the pointset
-        else:
-            jac = self.points[ptSetName].jac
-
-            # this is the mat-vec product for the remaining seeds.
-            # this only contains the effects of the FFD motion,
-            # projections and intersections are handled separately in compSens
-            dIdxT_local = jac.T.dot(dIdpt.T)
-            dIdx_local = dIdxT_local.T
-
-            # If we have a comm, globally reduce with sum
-            if comm:
-                dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+            # jacobian for the pointset
             else:
-                dIdx = dIdx_local
+                jac = self.points[ptSetName].jac
+
+                # this is the mat-vec product for the remaining seeds.
+                # this only contains the effects of the FFD motion,
+                # projections and intersections are handled separately in compSens
+                dIdxT_local = jac.T.dot(dIdpt.T)
+                dIdx_local = dIdxT_local.T
+
+                # If we have a comm, globally reduce with sum
+                if comm:
+                    dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+                else:
+                    dIdx = dIdx_local
 
         # use respective DVGeo's convert to dict functionality
         dIdxDict = OrderedDict()
@@ -1207,7 +1204,7 @@ class DVGeometryMulti:
                     dIdxDict[k] = v
 
         # accumulate dIdxDict if we have derivatives from FFD
-        if not ptSetComp.isFillet:
+        if ptSetComp is None or not ptSetComp.isFillet:
             # finally, we can add the contributions from intersections
             for compSens in compSensList:
                 # loop over the items of compSens, which are guaranteed to be in dIdxDict
@@ -1664,15 +1661,15 @@ class Intersection:
         self.projectFlag = project
 
         if dtype is float:
-            self.mpi_type = MPI.DOUBLE
+            self.mpiType = MPI.DOUBLE
         elif dtype is complex:
-            self.mpi_type = MPI.C_DOUBLE_COMPLEX
+            self.mpiType = MPI.C_DOUBLE_COMPLEX
 
     def setSurface(self, comm):
         """This set the new updated surface on which we need to compute the new intersection curve"""
 
         # get the updated surface coordinates
-        self._getUpdatedCoords()
+        self._getUpdatedCoords(comm)
 
         self.seam = self._getIntersectionSeam(comm)
 
@@ -1815,7 +1812,7 @@ class Intersection:
             # recvbuf
             ptsGlobal = np.zeros(3 * nptsg, dtype=self.dtype)
 
-            recvbuf = [ptsGlobal, sizes * 3, disp * 3, self.mpi_type]
+            recvbuf = [ptsGlobal, sizes * 3, disp * 3, self.mpiType]
 
             # do an allgatherv
             comm.Allgatherv(sendbuf, recvbuf)
@@ -1868,7 +1865,7 @@ class CompIntersection(Intersection):
 
         """
 
-        super.__init__(compA, compB, distTol, DVGeo, dtype, project)
+        super().__init__(compA=compA, compB=compB, distTol=distTol, DVGeo=DVGeo, dtype=dtype, project=project)
 
         # define epsilon as a small value to prevent division by zero in the inverse distance computation
         self.eps = 1e-20
@@ -2354,7 +2351,7 @@ class CompIntersection(Intersection):
                     idxs = self.curveProjIdx[ptSetName][curveName]
 
                     # call the utility function
-                    nPtsTotal, nPtsProcs, curvePtCoords = self._commCurveProj(pts, idxs, comm)
+                    nPtsTotal, nPtsProcs, curvePtCoords, _ = self._commCurveProj(pts, idxs, comm)
 
                     # save the displacements and points
                     self.curvePtCounts[ptSetName][curveName] = nPtsProcs
@@ -4400,7 +4397,7 @@ class FilletIntersection(Intersection):
     def _getIntersectionSeam(self, comm):
         pass
 
-    def _getUpdatedCoords(self):
+    def _getUpdatedCoords(self, comm=None):
         self.compA.updateSurfPts()
         self.compB.updateSurfPts()
         self.DVGeo.update(self.filletComp.surfPtsName)
