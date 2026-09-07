@@ -707,14 +707,18 @@ class TestDVGeoMultiFillet(unittest.TestCase):
 
     def test_deriv_compA(self):
         DVGeo, ptSetNames = self.set_up_fillet(False)
-        funcSens, funcSensFD, dvDict_real = self.deriv_fd(DVGeo.points[ptSetNames[0]].points, ptSetNames[0], DVGeo, ptSetNames[2], DVGeo.comps['fillet'])
+        funcSens, funcSensFD, dvDict_real = self.deriv_fd(
+            DVGeo.points[ptSetNames[0]].points, ptSetNames[0], DVGeo, ptSetNames[2], DVGeo.comps["fillet"]
+        )
 
         for x in dvDict_real:
             np.testing.assert_allclose(funcSens[x].T, funcSensFD[x], rtol=1e-4, atol=1e-10)
 
     def test_deriv_fillet(self):
         DVGeo, ptSetNames = self.set_up_fillet(False)
-        funcSens, funcSensFD, dvDict_real = self.deriv_fd(DVGeo.points[ptSetNames[2]].points, ptSetNames[2], DVGeo, ptSetNames[2], DVGeo.comps['fillet'])
+        funcSens, funcSensFD, dvDict_real = self.deriv_fd(
+            DVGeo.points[ptSetNames[2]].points, ptSetNames[2], DVGeo, ptSetNames[2], DVGeo.comps["fillet"]
+        )
         for x in dvDict_real:
             np.testing.assert_allclose(funcSens[x].T, funcSensFD[x], rtol=1e-4, atol=1e-10)
 
