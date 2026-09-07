@@ -1,6 +1,7 @@
 # Standard Python modules
 import os
 import unittest
+from copy import deepcopy
 
 # External modules
 from baseclasses import BaseRegTest
@@ -595,13 +596,66 @@ class TestDVGeoMultiFillet(unittest.TestCase):
         return DVGeo, ptSets
 
     def apply_DV(self, DVGeo, ptSetNames, val1, val2=None):
-        dvDict = DVGeo.getValues()
+        dvDict = DVGeo.getDesignVars()
         dvDict.update({"shapeA": val1})
         if val2 is not None:
             dvDict.update({"shapeB": val2})
         DVGeo.setDesignVars(dvDict)
 
         [DVGeo.update(name) for name in ptSetNames]
+
+    def deriv_fd(self, pts, ptSetName, DVGeo, filletPtSetName, fillet):
+        nNodes = pts.shape[0]
+        dIdpt = np.zeros((nNodes * 3, nNodes, 3))
+
+        for i in range(nNodes):
+            for j in range(3):
+                dIdpt[i * 3 + j, i, j] = 1
+
+        funcSens = DVGeo.totalSensitivity(dIdpt, ptSetName)
+
+        dvDict_real = DVGeo.getDesignVars()
+        funcSensFD = {}
+
+        stepSize_FD = 1e-5
+        nNodes = pts.shape[0]
+
+        dvList = dvDict_real.keys()
+
+        for x in dvList:
+            nx = len(dvDict_real[x])
+            funcSensFD[x] = np.zeros((nx, nNodes * 3))
+
+            for i in range(nx):
+                xRef_real = deepcopy(dvDict_real[x][i])
+
+                # Compute the central difference
+                dvDict_real[x][i] = xRef_real + stepSize_FD
+                DVGeo.setDesignVars(dvDict_real)
+                ptsNewPlus = DVGeo.update(ptSetName).copy()
+
+                dvDict_real[x][i] = xRef_real - stepSize_FD
+                DVGeo.setDesignVars(dvDict_real)
+                ptsNewMinus = DVGeo.update(ptSetName).copy()
+
+                funcSensFD[x][i, :] = (ptsNewPlus.flatten() - ptsNewMinus.flatten()) / (2 * stepSize_FD)
+
+                # Set the real DV back to the original value
+                dvDict_real[x][i] = deepcopy(xRef_real)
+
+        # zero out the points on the curve if this is the fillet pointset
+        if ptSetName is filletPtSetName:
+            allInd = deepcopy(fillet.compAInterInd)
+            allInd.extend(fillet.compBInterInd)
+
+            for x in dvDict_real:
+                deriv = funcSensFD[x].T
+                for i in range(nNodes):
+                    if i in (allInd):
+                        deriv[3 * i : 3 * i + 3] = 0
+                funcSensFD[x] = deriv.T
+
+        return funcSens, funcSensFD, dvDict_real
 
     def test_deform(self):
         # set up non-complex DVGeo
@@ -650,6 +704,19 @@ class TestDVGeoMultiFillet(unittest.TestCase):
         # fillet points should overlap with the component "curves"
         np.testing.assert_allclose(compAPtSet_updated[1], filletPtSet_updated[0], rtol=1e-6, atol=1e-8)
         np.testing.assert_allclose(compBPtSet_updated[1], filletPtSet_updated[2], rtol=1e-6, atol=1e-8)
+
+    def test_deriv_compA(self):
+        DVGeo, ptSetNames = self.set_up_fillet(False)
+        funcSens, funcSensFD, dvDict_real = self.deriv_fd(DVGeo.points[ptSetNames[0]].points, ptSetNames[0], DVGeo, ptSetNames[2], DVGeo.comps['fillet'])
+
+        for x in dvDict_real:
+            np.testing.assert_allclose(funcSens[x].T, funcSensFD[x], rtol=1e-4, atol=1e-10)
+
+    def test_deriv_fillet(self):
+        DVGeo, ptSetNames = self.set_up_fillet(False)
+        funcSens, funcSensFD, dvDict_real = self.deriv_fd(DVGeo.points[ptSetNames[2]].points, ptSetNames[2], DVGeo, ptSetNames[2], DVGeo.comps['fillet'])
+        for x in dvDict_real:
+            np.testing.assert_allclose(funcSens[x].T, funcSensFD[x], rtol=1e-4, atol=1e-10)
 
 
 if __name__ == "__main__":
