@@ -62,9 +62,9 @@ class TestImportGuards(unittest.TestCase):
             from pygeo import DVGeometryMulti
 
             with self.assertRaises(ImportError) as context:
-                DVGeometryMulti()
+                DVGeometryMulti(filletIntersection=False)
 
-            self.assertEqual(str(context.exception), "pySurf is not installed and is required to use DVGeometryMulti.")
+            self.assertEqual(str(context.exception), "pySurf is not installed and is required to use DVGeometryMulti for non-fillet intersections.")
 
     @ignore_warnings
     def test_DVGeometryCST_import_prefoil(self):
