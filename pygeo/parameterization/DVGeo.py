@@ -474,6 +474,7 @@ class DVGeometry(BaseDVGeometry):
                     "axis": axis,
                     "rot0ang": rot0ang,
                     "rot0axis": rot0axis,
+                    "rotAxisVar": rotAxisVar,
                 }
 
             else:
@@ -507,6 +508,7 @@ class DVGeometry(BaseDVGeometry):
                     "axis": axis,
                     "rot0ang": rot0ang,
                     "rot0axis": rot0axis,
+                    "rotAxisVar": rotAxisVar,
                 }
                 self.axis[name + "Symm"] = {
                     "curve": curveSymm,
@@ -515,6 +517,7 @@ class DVGeometry(BaseDVGeometry):
                     "axis": axis,
                     "rot0ang": rot0ang,
                     "rot0axis": rot0axis,
+                    "rotAxisVar": rotAxisVar,
                 }
             nAxis = len(curve.coef)
         elif xFraction is not None or yFraction is not None or zFraction is not None:
