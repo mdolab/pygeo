@@ -935,6 +935,59 @@ class DVGeometryCST(BaseDVGeometry):
             nDV += DV.nVal
         return nDV
 
+    def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
+        """
+        This function takes the result of totalSensitivity and converts it to a dict for use in pyOptSparse.
+
+        Parameters
+        ----------
+        dIdx : array
+            Flattened array of length getNDV(). Generally it comes from a call to totalSensitivity().
+        out1D : boolean
+            If true, creates a 1D array in the dictionary instead of 2D. This is used in the matrix-vector
+            product calculation.
+        useCompositeNames : boolean
+            Unused for DVGeometryCST (it does not support composite DVs); kept for interface compatibility.
+
+        Returns
+        -------
+        dIdxDict : dictionary
+            Dictionary of the same information keyed by this object's design variables.
+        """
+        i = 0
+        dIdxDict = {}
+        for key in self.DVs:
+            dv = self.DVs[key]
+            if out1D:
+                dIdxDict[key] = np.ravel(dIdx[:, i : i + dv.nVal])
+            else:
+                dIdxDict[key] = np.array(dIdx[:, i : i + dv.nVal])
+            i += dv.nVal
+        return dIdxDict
+
+    def convertDictToSensitivity(self, dIdxDict):
+        """
+        This function performs the reverse operation of convertSensitivityToDict(); it transforms the dictionary
+        back into an array. This function is important for the matrix-free interface.
+
+        Parameters
+        ----------
+        dIdxDict : dictionary
+            Dictionary of information keyed by this object's design variables.
+
+        Returns
+        -------
+        dIdx : array
+            Flattened array of length getNDV().
+        """
+        dIdx = np.zeros(self.getNDV(), dtype="d")
+        i = 0
+        for key in self.DVs:
+            dv = self.DVs[key]
+            dIdx[i : i + dv.nVal] = dIdxDict[key]
+            i += dv.nVal
+        return dIdx
+
     def printDesignVariables(self):
         """
         Print a formatted list of design variables to the screen
