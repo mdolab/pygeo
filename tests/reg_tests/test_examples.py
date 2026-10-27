@@ -8,6 +8,15 @@ from parameterized import parameterized
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
+# The airfoil-fitting example requires ESP (pyOCSM) and preFoil, so it is only run where those are available.
+try:
+    import pyOCSM  # noqa: F401
+    from prefoil.utils import readCoordFile  # noqa: F401
+
+    espAndPrefoilInstalled = True
+except ImportError:
+    espAndPrefoilInstalled = False
+
 
 class TestExamples(unittest.TestCase):
     def setUp(self):
@@ -60,6 +69,13 @@ class TestExamples(unittest.TestCase):
     def test_deform(self, input_type):
         self.output_file_list = [f"wingNew-{input_type}.plt"]
         self.common_test("deform_geometry", "runScript.py", args=["--input_type", input_type])
+
+    @unittest.skipUnless(
+        espAndPrefoilInstalled, "ESP (pyOCSM) and preFoil are required for the airfoil-fitting example"
+    )
+    def test_airfoil_fitting(self):
+        self.output_file_list = ["airfoil_fitting.svg"]
+        self.common_test("airfoil_fitting", "airfoil_fitting.py")
 
     def tearDown(self):
         try:

@@ -1,0 +1,12 @@
+DESPMTR camber_dv 0.0
+DESPMTR maxloc_dv 0.4
+DESPMTR thickness_dv 0.12
+# rst initialize DV
+UDPRIM    naca  camber camber_dv  maxloc maxloc_dv  thickness thickness_dv
+# rst airfoil 1
+TRANSLATE 0 0 -0.2
+UDPRIM    naca  camber camber_dv  maxloc maxloc_dv  thickness thickness_dv
+TRANSLATE 0 0 1.2
+BLEND
+# rst airfoil 2
+END
