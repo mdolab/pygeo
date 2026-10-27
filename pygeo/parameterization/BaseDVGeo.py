@@ -467,6 +467,14 @@ class BaseDVGeometry(ABC):
         # Get the initial design variable values and their bounds
         initialDVDict = self.getDesignVars()
         lowerBoundsDict, upperBoundsDict = self.getDVBounds()
+
+        # getDVBounds returns None for any unset bound. Passing None through convertDictToSensitivity would
+        # silently write nan into the bounds arrays, which makes scipy raise a misleading
+        # "Initial guess is outside of provided bounds" error. Substitute the unset bounds with infinite bounds,
+        # which scipy accepts, before converting to arrays so the DV ordering logic is preserved.
+        lowerBoundsDict = {key: (-np.inf if val is None else val) for key, val in lowerBoundsDict.items()}
+        upperBoundsDict = {key: (np.inf if val is None else val) for key, val in upperBoundsDict.items()}
+
         initialDVArray = self.convertDictToSensitivity(initialDVDict).flatten()
         lowerBoundsArray = self.convertDictToSensitivity(lowerBoundsDict).flatten()
         upperBoundsArray = self.convertDictToSensitivity(upperBoundsDict).flatten()
