@@ -516,9 +516,11 @@ class BaseDVGeometry(ABC):
             values = []
             for ii in range(numDVs):
                 seed[ii] = 1.0
-                # Propogate seed through to the point coordinates
+                # Propogate seed through to the point coordinates. The seed dict must hold 1D arrays (out1D=True):
+                # different DVGeo types expect different seed shapes in totalSensitivityProd, and 1D is the only shape
+                # accepted by all of them (e.g. DVGeometryCST and DVGeometryVSP require 1D seeds).
                 localCoordSens = self.totalSensitivityProd(
-                    self.convertSensitivityToDict(seed.reshape(1, -1)), ptSetName
+                    self.convertSensitivityToDict(seed.reshape(1, -1), out1D=True), ptSetName
                 ).flatten()
 
                 coordSensList = self.comm.allgather(localCoordSens)
