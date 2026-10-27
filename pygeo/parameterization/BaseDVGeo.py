@@ -327,6 +327,20 @@ class BaseDVGeometry(ABC):
         outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
         return outVec
 
+    def _getKnownPointSetNames(self):
+        """Return the names of the point sets known to this object, in a type-agnostic way.
+
+        Different DVGeo types track point sets in different containers (``self.points``, ``self.pointSets``, and/or
+        ``self.ptSetNames``), so we union them here to support the fitting methods across all parameterizations.
+
+        Returns
+        -------
+        list
+            The known point set names, with duplicates removed and order preserved.
+        """
+        names = list(self.ptSetNames) + list(self.points.keys()) + list(self.pointSets.keys())
+        return list(dict.fromkeys(names))
+
     def fitDVGeo(self, refDVGeo, ptSetName, pointFraction=None, callback=None, **kwargs):
         """
         Fit the design variables of this DVGeo object to match the pointset of another DVGeo object. This could be used,
@@ -374,12 +388,15 @@ class BaseDVGeometry(ABC):
             indices = np.arange(numPoints)
 
         # If the pointset we're using already exists in this DVGeo object, and we're not downsampling, we can use it
-        # directly, after checking that it is the same. Otherwise we need to add a new pointset
+        # directly, after checking that it is the same. Otherwise we need to add a new pointset.
+        # Use the type-agnostic getOrigPoints/ptSetNames accessors here rather than indexing self.points directly,
+        # because the storage of self.points differs between DVGeo types (e.g. it is not an array for DVGeometryCST).
         addNewPointSet = True
-        if ptSetName in self.points and pointFraction is None:
+        if ptSetName in self._getKnownPointSetNames() and pointFraction is None:
             # Check that the pointset has the same number of points as the reference pointset
-            ptSetsMatch = self.points[ptSetName].shape[0] == numPoints and np.allclose(
-                self.points[ptSetName][indices, :], refPointCoords
+            existingPointCoords = self.getOrigPoints(ptSetName)
+            ptSetsMatch = existingPointCoords.shape[0] == numPoints and np.allclose(
+                existingPointCoords[indices, :], refPointCoords
             )
             if ptSetsMatch:
                 addNewPointSet = False
@@ -427,11 +444,13 @@ class BaseDVGeometry(ABC):
             details.
         """
         # Verify that the pointset exists and that there are the correct number of points to fit
-        if ptSetName not in self.ptSetNames:
-            closestMatch = get_close_matches(ptSetName, self.ptSetNames, n=1, cutoff=0.0)[0]
-            raise ValueError(f"Point set '{ptSetName}' not found. Did you mean '{closestMatch}'?")
+        knownPtSetNames = self._getKnownPointSetNames()
+        if ptSetName not in knownPtSetNames:
+            closestMatches = get_close_matches(ptSetName, knownPtSetNames, n=1, cutoff=0.0)
+            suggestion = f" Did you mean '{closestMatches[0]}'?" if closestMatches else ""
+            raise ValueError(f"Point set '{ptSetName}' not found.{suggestion}")
 
-        numLocalPoints = self.points[ptSetName].shape[0]
+        numLocalPoints = self.getOrigPoints(ptSetName).shape[0]
         # Sum up the number of points across all procs if necessary
         if self.comm.size > 1:
             numTotalPoints = self.comm.allreduce(numLocalPoints, op=MPI.SUM)
