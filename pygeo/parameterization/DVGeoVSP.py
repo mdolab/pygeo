@@ -73,7 +73,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     """
 
-    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01, name=None):
+    def __init__(self, fileName, comm=None, scale=1.0, comps=[], projTol=0.01, name=None):
         vspOutOfDate = False
         if vspInstalled:
             vspVersionStr = openvsp.GetVSPVersion()
@@ -100,11 +100,11 @@ class DVGeometryVSP(DVGeoSketch):
                 + "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
             )
 
-        if comm.rank == 0:
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
+
+        if self.comm.rank == 0:
             print("Initializing DVGeometryVSP")
             t0 = time.time()
-
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
 
         if hasattr(openvsp, "VSPVehicle"):
             self.vspModel = openvsp.VSPVehicle()
@@ -149,13 +149,13 @@ class DVGeometryVSP(DVGeoSketch):
             self.bbox[c] = self._getBBox(c)
 
         # Now, we need to form our own quad meshes for fast projections
-        if comm.rank == 0:
+        if self.comm.rank == 0:
             print("Building a quad mesh for fast projections.")
         self._getQuads()
 
         self.useComposite = False
 
-        if comm.rank == 0:
+        if self.comm.rank == 0:
             t3 = time.time()
             print("Initialized DVGeometry VSP in", (t3 - t0), "seconds.")
 
