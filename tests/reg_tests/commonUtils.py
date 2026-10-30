@@ -300,7 +300,7 @@ def span(val, geo):
     axis_key = list(geo.axis.keys())[0]
     C = geo.extractCoef(axis_key)
     for i in range(1, C.shape[0]):
-        C[i, 2] *= val
+        C[i, 2] *= val[0]
 
     geo.restoreCoef(C, axis_key)
 
@@ -309,7 +309,7 @@ def spanX(val, geo):
     axis_key = list(geo.axis.keys())[0]
     C = geo.extractCoef(axis_key)
     for i in range(1, C.shape[0]):
-        C[i, 0] *= val
+        C[i, 0] *= val[0]
 
     geo.restoreCoef(C, axis_key)
 

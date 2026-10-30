@@ -23,7 +23,7 @@ class PlanarityConstraint(GeometricConstraint):
         self.n = len(p0)
 
         # The first thing we do is convert v1 and v2 to coords
-        self.axis = axis
+        self.axis = axis.flatten()
         self.p0 = p0
         self.p1 = v1 + p0
         self.p2 = v2 + p0

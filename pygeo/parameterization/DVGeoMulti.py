@@ -1541,12 +1541,12 @@ class CompIntersection:
                 allSurfIdx = np.array(indices[surfPtIdx[0]])
 
                 # component A
-                mask = np.in1d(allSurfIdx, indA, assume_unique=True)
+                mask = np.isin(allSurfIdx, indA, assume_unique=True)
                 # this is the local indices of the points affected
                 self.surfIdxA[ptSetName] = allSurfIdx[np.nonzero(mask)]
 
                 # component B
-                mask = np.in1d(allSurfIdx, indB, assume_unique=True)
+                mask = np.isin(allSurfIdx, indB, assume_unique=True)
                 self.surfIdxB[ptSetName] = allSurfIdx[np.nonzero(mask)]
 
                 # initialize the bool dict for this pointset

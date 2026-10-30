@@ -365,7 +365,7 @@ class DVGeometryVSP(DVGeoSketch):
         # Just dump in the values
         for key in dvDict:
             if key in self.DVs:
-                self.DVs[key].value = dvDict[key]
+                self.DVs[key].value = np.atleast_1d(np.array(dvDict[key], dtype=float))
 
         # we just need to set the design variables in the VSP model and we are done
         self._updateModel()
@@ -723,7 +723,7 @@ class DVGeometryVSP(DVGeoSketch):
         print("-" * 85)
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            print(f"{DV.component:>30}{DV.group:>20}{DV.parm:>20}{float(DV.value):15g}")
+            print(f"{DV.component:>30}{DV.group:>20}{DV.parm:>20}{DV.value.item():15g}")
 
     def createDesignFile(self, fileName):
         """
@@ -738,7 +738,7 @@ class DVGeometryVSP(DVGeoSketch):
         f.write("%d\n" % len(self.DVs))
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            f.write(f"{DV.parmID}:{DV.component}:{DV.group}:{DV.parm}:{float(DV.value):20.15g}\n")
+            f.write(f"{DV.parmID}:{DV.component}:{DV.group}:{DV.parm}:{DV.value.item():20.15g}\n")
         f.close()
 
     def writePlot3D(self, fileName, exportSet=0):
@@ -758,7 +758,7 @@ class DVGeometryVSP(DVGeoSketch):
             # We use float here since sometimes pyOptsparse will give
             # stupid numpy zero-dimensional arrays, which swig does
             # not like.
-            self.vspModel.SetParmVal(DV.parmID, float(DV.value))
+            self.vspModel.SetParmVal(DV.parmID, DV.value.item())
         self.vspModel.Update()
 
         # First set the export flag for exportSet to False for everyone
@@ -795,11 +795,11 @@ class DVGeometryVSP(DVGeoSketch):
             if "angle" in DV.parm.lower():
                 # set this new value separately to leave the DV.value itself untouched
                 new_value = ((DV.value + 180.0) % 360.0) - 180.0
-                self.vspModel.SetParmVal(DV.parmID, float(new_value))
+                self.vspModel.SetParmVal(DV.parmID, new_value.item())
             else:
                 # We use float here since sometimes pyOptsparse will give
                 # numpy zero-dimensional arrays, which swig does not like
-                self.vspModel.SetParmValUpdate(DV.parmID, float(DV.value))
+                self.vspModel.SetParmValUpdate(DV.parmID, DV.value.item())
 
         # update the model
         self.vspModel.Update()
