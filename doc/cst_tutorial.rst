@@ -59,6 +59,8 @@ When the ``addDV`` method is called, we pass the name of the design variable we'
 - ``"N2_upper"``: second class shape parameters for upper surface (adds a single DV)
 - ``"N2_lower"``: second class shape parameters for lower surface (adds a single DV)
 - ``"chord"``: chord length in whatever units the point set length is defined and scaled to keep the leading edge at the same position (adds a single DV)
+- ``"lem"``: weight of Kulfan's leading edge modification (LEM) term, which is shared by the upper and lower surfaces (adds a single DV); see :ref:`cst_leading_edge`
+- ``"te_thickness"``: trailing edge thickness normalized by the chord, for blunt trailing edge airfoils (adds a single DV); the trailing edge opens symmetrically about the midpoint of the dat file's trailing edge and points on the trailing edge face move with it
 
 Note that either the upper/lower surface class shape parameter DV can be defined (e.g., ``"N1_upper"``), or the DV for both the upper and lower surfaces' class shape parameter can be defined (e.g., ``"N1"``), but not both.
 
@@ -130,6 +132,40 @@ The underlying airfoil class shape has now changed and note that the chord lengt
 .. image:: ../examples/cst/perturbed_class_chord.svg
     :width: 800
     :align: center
+
+.. _cst_leading_edge:
+
+-------------------------------------
+Leading edge continuity and droop
+-------------------------------------
+
+With the default class shape parameter :math:`N_1 = 0.5`, each surface behaves like :math:`y \approx w_0 \sqrt{x}` near the leading edge, so its leading edge radius is :math:`w_0^2 / 2`, where :math:`w_0` is the first CST coefficient of that surface.
+If the first upper and lower coefficients have different magnitudes, the two surfaces have different leading edge radii and the curvature jumps at the leading edge.
+In optimization, this is usually prevented by constraining ``upper[0] + lower[0] = 0``, which is also Kulfan's convention for cambered airfoils\ :footcite:p:`CST`.
+The ``addLEContinuityConstraint`` method adds this linear equality constraint to a pyOptSparse problem.
+
+This constraint has a side effect: without any other terms, the nose is then locally symmetric about the chord line and the camber line has zero slope at the leading edge, so the leading edge cannot droop.
+Kulfan's leading edge modification (LEM) term restores this freedom.
+On each surface it is :math:`w_\text{LE} \, x (1 - x)^{N + 0.5}`, where :math:`N = n - 1` is the Bernstein polynomial order for :math:`n` CST coefficients.
+It behaves like :math:`x` near the leading edge, so it does not change either leading edge radius.
+The ``"lem"`` DV uses one weight on both surfaces, which gives the camber line a finite slope at the leading edge (droop).
+The ``"lem_upper"`` and ``"lem_lower"`` DVs are Kulfan's original per-surface weights; their difference also adds a thickness slope at the leading edge.
+With the continuity constraint, both options keep the curvature continuous at the leading edge.
+
+For airfoils with camber at the leading edge, the default fit uses unequal first coefficients to represent the droop, so the initial design would not satisfy the continuity constraint.
+The ``fitLEContinuity`` and ``fitLEM`` initialization options fit the upper and lower surfaces together, enforcing ``lower[0] = -upper[0]`` and/or including the LEM term (``fitLEM=True`` for one shared weight or ``fitLEM="per_surface"`` for separate weights).
+The fitted LEM weights are part of the geometry even if no LEM design variable is added.
+
+.. code-block:: python
+
+    DVGeo = DVGeometryCST("naca2412.dat", numCST=8, fitLEContinuity=True, fitLEM=True)
+    DVGeo.addDV("upper_shape", dvType="upper")
+    DVGeo.addDV("lower_shape", dvType="lower")
+    DVGeo.addDV("lem", dvType="lem")
+
+    # After adding the DVs to the pyOptSparse problem
+    DVGeo.addVariablesPyOpt(optProb)
+    DVGeo.addLEContinuityConstraint(optProb)
 
 -------
 Summary
