@@ -1005,6 +1005,34 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         self.add_output(name, distributed=False, val=np.ones(nSpan), shape=nSpan)
 
+    def nom_addLocationConstraints1D(
+        self,
+        name,
+        ptList,
+        nCon,
+        lower=None,
+        upper=None,
+        scaled=False,
+        scale=1.0,
+        addToPyOpt=True,
+        DVGeoName="default",
+        compNames=None,
+    ):
+        con = self.DVCon.addLocationConstraints1D(
+            ptList,
+            nCon,
+            lower,
+            upper,
+            scaled,
+            scale,
+            name,
+            addToPyOpt,
+            DVGeoName,
+            compNames,
+        )
+        initVal = np.ones(con.nCon) if scaled else con.X0.flatten().copy()
+        self.add_output(name, distributed=False, val=initVal, shape=con.nCon)
+
     def nom_addCurvatureConstraint1D(
         self,
         name,
