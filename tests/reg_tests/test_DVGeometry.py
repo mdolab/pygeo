@@ -9,6 +9,7 @@ import unittest
 from baseclasses import BaseRegTest
 import commonUtils
 import numpy as np
+from pyspline import Curve
 from stl import mesh
 
 # First party modules
@@ -1497,6 +1498,40 @@ class RegTestPyGeo(unittest.TestCase):
         self.assertEqual(list(shimValues.keys()), list(directValues.keys()))
         for key in directValues:
             np.testing.assert_array_equal(shimValues[key], directValues[key])
+
+    def test_explicit_ref_axis_rot_type_8(self):
+        ffdfile = os.path.join(self.base_path, "../../input_files/outerBoxFFD.xyz")
+        DVGeo = DVGeometry(ffdfile)
+
+        axis_points = [[-1.0, 0.0, 0.0], [1.5, 0.0, 0.0]]
+        curve = Curve(X=axis_points, k=2)
+
+        DVGeo.addRefAxis(
+            "mainAxis",
+            curve=curve,
+            axis="y",
+            rotType=8,
+            rotAxisVar="sectionLocalDV",
+        )
+
+        DVGeo.addLocalSectionDV(
+            "sectionLocalDV",
+            secIndex="i",
+            axis=1,
+        )
+
+        points = np.array(
+            [
+                [0.25, 0.0, 0.0],
+                [-0.25, 0.0, 0.0],
+            ]
+        )
+        DVGeo.addPointSet(points, "testPoints")
+
+        updated_points = DVGeo.update("testPoints")
+
+        self.assertEqual(DVGeo.axis["mainAxis"]["rotAxisVar"], "sectionLocalDV")
+        self.assertEqual(updated_points.shape, points.shape)
 
 
 if __name__ == "__main__":

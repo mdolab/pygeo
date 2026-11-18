@@ -229,6 +229,27 @@ test_params_constraints_box = [
         "valCheck": 8 * np.ones(6),
     },
     {
+        "conFunc": "nom_addThicknessConstraints2D",
+        "kwargs": {
+            "name": "func",
+            "leList": [
+                [-0.25, 0.0, 0.1],
+                [-0.25, 0.0, 4.0],
+                [-0.25, 0.0, 7.9],
+            ],
+            "teList": [
+                [0.75, 0.0, 0.1],
+                [0.75, 0.0, 4.0],
+                [0.75, 0.0, 7.9],
+            ],
+            "nSpan": [1, 2],
+            "nChord": 3,
+            "scaled": False,
+        },
+        "valCheck": np.ones(9),
+        "valTol": 1e-4,
+    },
+    {
         "conFunc": "nom_addVolumeConstraint",
         "kwargs": {
             "name": "func",
